@@ -8,39 +8,54 @@
 
 (defun qv/term-setup ()
   (interactive)
-  (term-char-mode)
-
-  (setq-local winner-mode nil)
   (buffer-face-set 'fixed-pitch)
   (display-line-numbers-mode 0)
-
-  (qv/face1 'term-color-blue nil qv/blue-color nil)
-  (qv/face1 'term-color-red nil "#EF2929" nil)
-  (qv/face1 'term-color-yellow nil "#FCE94F" nil)
-  (qv/face1 'term-color-green nil "#8AE234" nil)
-  (qv/face1 'term-color-magenta nil "#FF66BB" nil)
-  (qv/face1 'term-color-black nil qv/gray3-color nil)
-
   (setq-local scroll-margin 0)
   (setq-local maximum-scroll-margin 0.0)
+  (qv/key term-raw-map "C-c" term-send-raw)
+  
+  (qv/face term-color-blue :fg blue)
+  (qv/face term-color-red :fg "#EF2929")
+  (qv/face term-color-yellow :fg "#FCE94F")
+  (qv/face term-color-green :fg "#8AE234")
+  (qv/face term-color-magenta :fg "#FF66BB")
+  (qv/face term-color-black :fg gray3)
+  
+  (qv/term-keybindings)
+  (qv/term-char))
 
-  (define-key term-mode-map (kbd "i") 'term-char-mode)
+(defun qv/term-char ()
+  (interactive)
+  (term-char-mode)
 
-  (define-key term-raw-map (kbd "ESC") term-raw-escape-map)
-  (setq term-raw-escape-map (make-sparse-keymap))
+  (recenter-cursor-mode 0))
+
+(defun qv/term-line ()
+  (interactive)
+  (term-line-mode)
+  
+  (recenter-cursor-mode 1))
+
+(defun qv/term-keybindings ()
+  (interactive)
+  (qv/key term-mode-map "i" qv/term-char)
+  
+  (qv/key term-raw-map "ESC" ,term-raw-escape-map)
+  (setcdr term-raw-escape-map nil)
   (dolist (i (number-sequence 1 126))
     (define-key term-raw-escape-map (vector i) 'term-send-raw-meta)
     (unless (eq i 27)
-      (unbind-key (kbd (string i)) term-raw-map)
+      (define-key term-raw-map (kbd (string i)) nil)
       (define-key term-raw-map (vector i) 'term-send-raw)))
 
   (qv/keys term-raw-map
-    "<return>" term-send-return
+    "s-q" qv/term-line
+    "RET" term-send-return
     "C-\\" nil
     "C-\\ C-\\" term-send-raw
-    "C-\\ C-n" term-line-mode
-    "s-q" term-line-mode
+    "C-\\ C-n" qv/term-line
     "C-V" term-paste
+    
     "M-l" term-send-right
     "M-h" term-send-left
     "M-k" term-send-up

@@ -1,6 +1,8 @@
+
 ;;; X Settings
 (shell-command "xgamma -gamma 1.2")
 (shell-command "xrandr -s 1920x1080")
+(set-frame-size (selected-frame) 1900 1080 t)
 
 ;;; EXWM
 ;;;; Installing
@@ -13,6 +15,7 @@
 (defun qv/exwm-update-class ()
   (if (string= exwm-class-name ".blueman-applet-wrapped")
       (kill-buffer nil))
+  (exwm-layout-hide-mode-line)
   (exwm-workspace-rename-buffer (concat ":" exwm-class-name ":")))
 
 (add-hook 'exwm-update-class-hook 'qv/exwm-update-class)
@@ -191,6 +194,7 @@
 
 ;;; Configuration
 (exwm-enable)
+(exwm-init)
 
 ;;;; Transparency
 (defun qv/set-opacity (opacity)
@@ -198,8 +202,8 @@
   (add-to-list 'default-frame-alist (cons 'alpha (cons opacity opacity)))
   (set-frame-parameter (selected-frame) 'fullscreen 'maximized)
   (add-to-list 'default-frame-alist '(fullscreen . maximized)))
-(qv/set-opacity 92)
-(qv/run-in-background "picom")
+(qv/set-opacity 88)
+(qv/run-in-background "compton")
 
 ;;;; Wallpaper
 (defun qv/set-wallpaper (wallpaper)
@@ -208,6 +212,8 @@
            (expand-file-name "~/Media/Wallpaper/")
            wallpaper)))
 (qv/set-wallpaper "RedNebulaWallpaper.jpeg")
+
+(shell-command "feh --bg-scale /home/adam/Media/Wallpaper/RedNebulaWallpaper.jpeg")
 
 ;;;; Audio Settings
 (defun qv/current-pulseaudio-sink ()

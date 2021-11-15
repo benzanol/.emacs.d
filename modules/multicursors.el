@@ -12,4 +12,4 @@
   "I" mc/edit-lines
   "A" mc/edit-lines)
 
-(qv/key * "C-j" mc/keymap)
+(qv/key * "C-j" ,mc/keymap)

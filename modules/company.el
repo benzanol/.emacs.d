@@ -8,18 +8,29 @@
       company-tooltip-minimum-width 30
       company-tooltip-maximum-width 50
       company-minimum-prefix-length 1
-      company-tooltip-width-grow-only t)
+      company-tooltip-width-grow-only t
+      company-auto-complete nil
+      company-minimum-prefix-length 1000)
+
+(defun qv/company-toggle-autocomplete ()
+  (interactive)
+  (setq company-minimum-prefix-length
+        (if (eq company-minimum-prefix-length 1000) 1 1000)))
+
+(add-hook 'insert-keymode-hook 'company-abort)
 
 (qv/face company-tooltip :bg "#383B48")
 (qv/face company-tooltip-common)
 (qv/face company-tooltip-selection highlight)
-(qv/face company-preview :fg ,qv/gray2)
+(qv/face company-preview nil :fg gray2 :bg nil)
 (qv/face company-preview-common company-preview)
 (qv/face company-preview-search company-preview)
-(qv/face company-scrollbar-fg :bg ,qv/gray2)
+(qv/face company-scrollbar-fg :bg gray2)
 (qv/face company-scrollbar-bg company-tooltip)
 
-(qv/define-keys company-active-map
+(qv/keys modeal-insert-map "<C-tab>" company-complete)
+
+(qv/keys company-active-map
   :sparse t
   "<tab>" company-complete-selection
   "<backtab>" company-complete-common

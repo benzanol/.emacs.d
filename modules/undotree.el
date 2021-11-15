@@ -5,7 +5,7 @@
 (setq undo-tree-history-directory-alist '(("." . "~/.emacs.d/undo-history"))
       undo-tree-auto-save-history t)
 
-(qv/define-keys undo-tree-map
+(qv/keys undo-tree-map
   :sparse t
   "u" undo-tree-undo
   "U" undo-tree-redo)

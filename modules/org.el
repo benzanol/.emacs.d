@@ -23,23 +23,23 @@
 ;;; Faces
 ;;;; Outline Faces
 (qv/face qv/org-header :f "Droid Serif" :w bold)
-(qv/face org-document-title qv/org-header :fg ,qv/fg :h 1.5)
-(qv/face org-document-info qv/org-header :fg ,qv/fg :h 1.25)
+(qv/face org-document-title qv/org-header :fg fg :h 1.5)
+(qv/face org-document-info qv/org-header :fg fg :h 1.25)
 (qv/face org-level-1 qv/org-header :fg qv/blue :h 1.2)
 (qv/face org-level-2 qv/org-header :fg qv/yellow :h 1.2)
 (qv/face org-level-3 qv/org-header :fg qv/red :h 1.2)
 (qv/face org-level-4 qv/org-header :fg qv/purple :h 1.2)
 
 ;;;;; Special Faces
-(qv/face org-special-keyword fixed-pitch :fg ,qv/gray2 :h 0.8)
+(qv/face org-special-keyword fixed-pitch :fg gray2 :h 0.8)
 (qv/face org-table fixed-pitch)
 (qv/face org-meta-line org-special-keyword)
 (qv/face org-document-info-keyword org-special-keyword)
-(qv/face org-verbatim fixed-pitch :fg ,qv/gray2)
-(qv/face org-code org-verbatim :fg ,qv/bg2)
-(qv/face org-block fixed-pitch :fg ,qv/bg2 :x t)
-(qv/face org-block-begin-line org-block :fg ,qv/gray3)
-(qv/face org-block-end-line org-block :fg ,qv/gray3)
+(qv/face org-verbatim fixed-pitch :fg gray2)
+(qv/face org-code org-verbatim :fg bg2)
+(qv/face org-block fixed-pitch :fg bg2 :x t)
+(qv/face org-block-begin-line org-block :fg gray3)
+(qv/face org-block-end-line org-block :fg gray3)
 (qv/face org-checkbox fixed-pitch)
 (qv/face org-ellipsis :u nil)
 

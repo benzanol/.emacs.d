@@ -7,6 +7,12 @@
 
 (qv/hook post-command-hook qv/recenter
   (when recenter-cursor-mode
-    (let ((cursor (point)))
-      (recenter)
-      (goto-char cursor))))
+	(ignore-errors
+      (let ((cursor (point)))
+        (recenter)
+        (goto-char cursor)))))
+
+(defun disable-recenter-cursor ()
+  (interactive)
+  (recenter-cursor-mode 0))
+(add-hook 'minibuffer-setup-hook 'disable-recenter-cursor)

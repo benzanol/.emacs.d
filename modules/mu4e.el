@@ -1,5 +1,5 @@
 ;;; Installation
-(setq qv/mu4e-path (expand-file-name "~/.nix-profile/share/emacs/site-lisp/mu4e"))
+(setq qv/mu4e-path "/usr/share/emacs/site-lisp/mu4e")
 (add-to-list 'load-path qv/mu4e-path)
 (require 'mu4e)
 
@@ -17,7 +17,7 @@
 
 (setq mu4e-maildir "~/Mail")
 
-(qv/face mu4e-title-face fixed-pitch :fg ,qv/blue-color)
+(qv/face mu4e-title-face fixed-pitch :fg blue)
 
 ;;; Accounts
 (setq qv/mu4e-context-gmail
@@ -177,12 +177,12 @@
 (setq mu4e-headers-visible-columns 60)
 
 ;;; Custom Header Format
-(qv/face1 'mu4e-header-from nil nil nil :height 1.0 :weight 'semibold)
-(qv/face1 'mu4e-header-starred nil qv/yellow-color nil :height 1.0 :weight 'semibold)
-(qv/face1 'mu4e-header-subject nil nil nil :height 1.0 :weight 'normal)
-(qv/face1 'mu4e-header-date 'fixed-pitch qv/gray1-color nil :height 0.8 :weight 'bold)
-(qv/face1 'mu4e-header-separator 'fixed-pitch nil nil :strike-through qv/gray2-color :extend t)
-(qv/face1 'mu4e-header-highlight-face nil qv/blue-color nil :underline nil)
+(qv/face mu4e-header-from :h 1.0 :w semibold)
+(qv/face mu4e-header-starred :fg yellow :h 1.0 :w semibold)
+(qv/face mu4e-header-subject :h 1.0 :w normal)
+(qv/face mu4e-header-date fixed-pitch :fg gray1 :h 0.8 :w bold)
+(qv/face mu4e-header-separator fixed-pitch :st gray2 :x t)
+(qv/face mu4e-header-highlight-face :fg blue :u nil)
 
 (defun mu4e~header-line-format () "")
 (setq mu4e-headers-visible-columns 50)

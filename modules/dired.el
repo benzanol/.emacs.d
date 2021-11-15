@@ -13,7 +13,7 @@
 (setq all-the-icons-scale-factor 1.0)
 (setq all-the-icons-fileicon-scale-factor 1.0)
 
-(qv/face all-the-icons-dired-dir-face dired-directory)
+(qv/face all-the-icons-dired-dir-face dired-directory :fg nil)
 
 ;;; Subtree
 (qv/package dired-subtree)
@@ -73,7 +73,7 @@
     (dired up-dir)))
 
 (qv/keys dired-mode-map
-  "<return>" qv/dired-open
+  "RET" qv/dired-open
   "L" qv/dired-open
   "H" qv/dired-up)
 
@@ -138,13 +138,14 @@
               window-size-fixed 'width
               line-spacing 0.1)
 
-  (qv/face dired-directory :fg qv/blue-color)
+  (variable-pitch-mode 1)
+  (qv/face dired-directory :fg blue)
   (qv/face dired-header dired-directory :h 1.1 :w bold :u t)
-  (qv/face dired-marked :fg qv/yellow-color)
+  (qv/face dired-marked :fg yellow)
   (qv/face dired-mark dired-marked)
-  (qv/face dired-symlink :fg ,qv/purple-color)
+  (qv/face dired-symlink :fg purple)
   (dotimes (i 5)
-    (qv/face1 (intern (format "dired-subtree-depth-%s-face" (1+ i))) nil nil nil))
+    (qv/face ,(intern (format "dired-subtree-depth-%s-face" (1+ i))) :bg nil))
 
   (rename-buffer
    (format "Dired: %s"

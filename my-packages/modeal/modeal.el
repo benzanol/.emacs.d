@@ -1,3 +1,5 @@
+(require 'dash)
+
 ;;; Convenient Functions
 ;;;; Keybinding Macro
 (defvar modeal-keybinding-abbrevs
@@ -15,13 +17,13 @@
    ((eq key :full) (if (and (boundp map) (keymapp (eval map)))
                        `(setcdr ,map (cdr (make-keymap))) `(setq ,map (make-sparse-keymap))))
    (t (setq key (cond ((stringp key) (kbd key)) ((numberp key) (vector key)) (t key)))
-      (if (null binding) `(unbind-key ,key ,map)
-        `(,@(or (plist-get modeal-keybinding-abbrevs map) (list 'define-key map)) ,key
-          ,(cond ((or (atom binding) (functionp binding) (keymapp binding)) (list 'quote binding))
-                 ((memq (car binding) '(defun defmacro lambda)) binding)
-                 ((eq (car binding) '@) `(defun ,(cadr binding) () (interactive) . ,(cddr binding)))
-                 ((listp (car binding)) `(lambda () (interactive) . ,binding))
-                 (t (eval `(lambda () (interactive) ,binding)))))))))
+      `(,@(or (plist-get modeal-keybinding-abbrevs map) (list 'define-key map)) ,key
+        ,(cond ((and (listp binding) (eq (car binding) '\,)) (cadr binding))
+               ((or (atom binding) (functionp binding) (keymapp binding)) (list 'quote binding))
+               ((memq (car binding) '(defun defmacro lambda)) binding)
+               ((eq (car binding) '@) `(defun ,(cadr binding) () (interactive) . ,(cddr binding)))
+               ((listp (car binding)) `(lambda () (interactive) . ,binding))
+               (t (eval `(lambda () (interactive) ,binding))))))))
 
 (defmacro modeal-keys (map &rest forms)
   (declare (indent 1))
@@ -466,6 +468,7 @@ of the motion. The rest of the logic will be handled automatically."
   "~" modeal-toggle-case
   "g u" modeal-downcase
   "g U" modeal-upcase
+  "g =" (@ modeal-indent-buffer (indent-region (point-min) (point-max)))
   ;; Personal Preferences
   "M-q" (call-interactively (key-binding (kbd "C-g")))
   "H" (@ qv/left4 (backward-char 4))
@@ -481,7 +484,7 @@ of the motion. The rest of the logic will be handled automatically."
   "C-M-k" beginning-of-buffer
   "C-M-h" beginning-of-line
   "C-M-l" end-of-line
-  "M" ((next-line) (join-line)))
+  "M" (@ modeal-merge-lines (next-line) (join-line)))
 
 ;;;; Insert keymap
 (modeal-keys modeal-insert-map
@@ -512,12 +515,13 @@ of the motion. The rest of the logic will be handled automatically."
   :parent modeal-motion-map
   "M-q"  (deactivate-mark)
   "v"  (deactivate-mark)
-  "o"  exchange-point-and-mark)
+  "o"  exchange-point-and-mark
+  "=" indent-region)
 
 ;;;; Action keymap
 (modeal-keys modeal-action-map
   :sparse t
-  "z" execute-extended-command
+  "x" execute-extended-command
   "e" eval-expression
   ";" eval-expression
   "b" switch-to-buffer
@@ -553,11 +557,12 @@ of the motion. The rest of the logic will be handled automatically."
 ;;;; Global
 (use-global-map
  (make-composed-keymap
-  modeal-normal-map
+  (list modeal-normal-map
+        (modeal-add-keymap-prefix modeal-window-map "M-")
+        (modeal-add-keymap-prefix modeal-action-map "M-"))
   global-map))
 
 ;;;; Insert
-(require 'dash)
 (define-minor-mode insert-keymode
   "Minor mode that enables the insert keymap"
   nil "<I>"

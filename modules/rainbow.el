@@ -1,4 +1,5 @@
 (qv/package rainbow-delimiters)
+(rainbow-delimiters-mode 1)
 
 (add-hook 'emacs-lisp-mode-hook 'rainbow-delimiters-mode)
 (setq rainbow-delimiters-max-face-count 7)

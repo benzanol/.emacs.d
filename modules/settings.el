@@ -38,7 +38,7 @@
 (setq-default auto-save-default t)
 (setq-default make-backup-files nil)
 (defun make-auto-save-file-name ()
-  (concat (expand-file-name "~/.emacs.d/auto-saves/")
+  (concat (expand-file-name "~/.emacs.d/auto-save-list/")
           (replace-regexp-in-string "/" "!" buffer-file-name)))
 (setq create-lockfiles nil)
 
@@ -77,10 +77,6 @@
       read-file-name-completion-ignore-case t
       bookmark-completion-ignore-case t
       read-buffer-completion-ignore-case t)
-
-;;; Start Emacs Server
-;; Allows access through the shell command `emacsclient`
-(server-start)
 
 ;;; Tramp
 (setq tramp-histfile-override (expand-file-name "~/.emacs.d/.cache/tramp/tramp_history")

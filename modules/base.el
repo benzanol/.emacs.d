@@ -11,14 +11,24 @@
 (defun qv/load (module)
   (interactive
    (list (completing-read
-          "Load Module:"
+          "Load Module: "
           (mapcar 'file-name-base
                   (split-string (shell-command-to-string
                                  "ls ~/.emacs.d/modules"))))))
-  (load-file (format "~/.emacs.d/modules/%s.el" module)))
+  (let ((file (format "~/.emacs.d/modules/%s.el" module)))
+    (if (not (ignore-errors (load-file file)))
+        (message "Error loading `%s`" file)
+      (message "Successfully loaded `%s`" file)
+      (push (intern (format "%s" module)) qv/loaded-modules))))
 
-(defmacro qv/module (module)
-  `(qv/load ',module))
+(global-set-key (kbd "C-x C-l") 'qv/load)
+
+(defmacro qv/required (module)
+  `(memq ',module qv/loaded-modules))
+
+(defmacro qv/require (module)
+  `(unless (qv/required ,module)
+     (qv/load ',module)))
 
 ;;; Package Management
 (require 'package)
@@ -61,9 +71,25 @@
     (while props
       (setq prop (pop props)
             prop (or (plist-get qv/face-property-abbrevs prop) prop)
-            spec (cons (pop props) (cons prop spec))))
+            val (pop props)
+            val (if (and (or (eq prop :foreground) (eq prop :background)) (symbolp val))
+                    (list '\, (list 'qv/color val)) val)
+            spec `(,val ,prop . ,spec)))
     ;; Wrap the spec in a backquote, and run it into `face-spec-set`
     (list 'face-spec-set (list '\` face) (list '\` (list (cons t (reverse spec)))))))
+
+;;; Colors
+(defvar qv/color-plist nil
+  "Plist of symbols and valid emacs color strings.")
+
+(defmacro qv/color (color)
+  `(plist-get qv/color-plist ',color))
+
+(defmacro qv/set-colors (&rest args)
+  (cons 'progn
+        (mapcar (lambda (n)
+                  `(set 'qv/color-plist (plist-put qv/color-plist ',(nth n args) ,(nth (1+ n) args))))
+                (number-sequence 0 (- (length args) 2) 2))))
 
 ;;; Hook Macro
 (defmacro qv/hook (hook name &rest body)
@@ -92,13 +118,13 @@ HOOK can also be a list of hooks."
    ((eq key :full) (if (and (boundp map) (keymapp (eval map)))
                        `(setcdr ,map (cdr (make-keymap))) `(setq ,map (make-sparse-keymap))))
    (t (setq key (cond ((stringp key) (kbd key)) ((numberp key) (vector key)) (t key)))
-      (if (null binding) `(unbind-key ,key ,map)
-        `(,@(or (plist-get qv/keybinding-abbrevs map) (list 'define-key map)) ,key
-          ,(cond ((or (atom binding) (functionp binding) (keymapp binding)) (list 'quote binding))
-                 ((memq (car binding) '(defun defmacro lambda)) binding)
-                 ((eq (car binding) '@) `(defun ,(cadr binding) () (interactive) . ,(cddr binding)))
-                 ((listp (car binding)) `(lambda () (interactive) . ,binding))
-                 (t (eval `(lambda () (interactive) ,binding)))))))))
+      `(,@(or (plist-get qv/keybinding-abbrevs map) (list 'define-key map)) ,key
+        ,(cond ((and (listp binding) (eq (car binding) '\,)) (cadr binding))
+               ((or (atom binding) (functionp binding) (keymapp binding)) (list 'quote binding))
+               ((memq (car binding) '(defun defmacro lambda)) binding)
+               ((eq (car binding) '@) `(defun ,(cadr binding) () (interactive) . ,(cddr binding)))
+               ((listp (car binding)) `(lambda () (interactive) . ,binding))
+               (t (eval `(lambda () (interactive) ,binding))))))))
 
 (defmacro qv/keys (map &rest forms)
   (declare (indent 1))

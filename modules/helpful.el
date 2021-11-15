@@ -5,10 +5,12 @@
   "C-h v" helpful-variable)
 
 (qv/hook helpful-mode-hook qv/helpful-keybindings
-  (qv/define-keys helpful-mode-map
+  (qv/keys helpful-mode-map
     :sparse t
     :parent special-mode-map
     [remap revert-buffer] helpful-update))
+
+(add-hook 'helpful-mode-hook 'variable-pitch-mode)
 
 (advice-add 'helpful-update :after 'qv/helpful-code-overlay)
 (defun qv/helpful-code-overlay ()

@@ -9,10 +9,10 @@
   :sparse t
   "C-j" next-history-element
   "C-k" previous-history-element
-  "<return>" exit-minibuffer
+  "RET" exit-minibuffer
   "<C-return>" exit-minibuffer
   "C-g" keyboard-escape-quit
-  "<tab>" minibuffer-complete)
+  "TAB" minibuffer-complete)
 
 (setcdr vertico-map nil)
 (qv/keys vertico-map
@@ -24,6 +24,9 @@
   [remap qv/up4] (dotimes (i 4) (vertico-previous))
   [remap exit-minibuffer] vertico-exit
   [remap minibuffer-complete] vertico-insert)
+
+(add-hook 'minibuffer-setup-hook 'variable-pitch-mode)
+(qv/face minibuffer-prompt fixed-pitch :fg blue :w bold)
 
 ;;; Prescient
 (qv/package prescient)
@@ -50,7 +53,8 @@
     (unless (memq face qv/marginalia-variable-faces)
       (let ((inheritance (face-attribute face :inherit)))
         (set-face-attribute
-         face nil :family "Iosevka" :height 72)))))
+         face nil :height 1.0
+         :family (face-attribute 'fixed-pitch :family))))))
 
 (defun marginalia--truncate (str width)
   "Truncate string STR to WIDTH."

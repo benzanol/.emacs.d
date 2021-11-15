@@ -7,7 +7,8 @@
   "g z j" outline-next-heading
   "g z k" outline-previous-heading
   "g z s" outline-show-subtree
-  "g z m" (lambda (level) (interactive "P")
+  "g z m" (defun qv/outline-hide (level)
+              (interactive "P")
 	        (save-excursion
 		      (beginning-of-buffer)
               (outline-hide-sublevels
