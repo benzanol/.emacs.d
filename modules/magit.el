@@ -4,5 +4,14 @@
 (qv/keys magit-status-mode-map
   "j" nil "k" nil "h" nil "l" nil
   "J" nil "K" nil "H" nil "L" nil
-  "g" nil "r" magit-refresh
-  "SPC" magit-section-toggle)
+  "g" nil
+  "r" magit-refresh
+  "R" magit-refresh-all
+  "G" magit-checkout
+  "SPC" (@ qv/magit-section-toggle
+           (ignore-errors (next-line) (goto-char (1- (line-beginning-position)))
+                          (beginning-of-line))
+           (call-interactively 'magit-section-toggle)))
+
+;; When commiting, jump right to commit message
+(setq magit-commit-show-diff nil)

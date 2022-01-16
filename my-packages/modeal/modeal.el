@@ -240,8 +240,10 @@ of the motion. The rest of the logic will be handled automatically."
 
 (defun modeal-open-below ()
   (interactive)
-  (end-of-line) (next-line 1)
-  (goto-char (1- (line-beginning-position)))
+  (end-of-line)
+  (if (ignore-errors (next-line) t)
+      (goto-char (1- (line-beginning-position)))
+    (end-of-buffer))
   (modeal-newline)
   (insert-keymode))
 
@@ -276,9 +278,9 @@ of the motion. The rest of the logic will be handled automatically."
   (if (string-match "\n" string)
       (progn (end-of-line)
              (->> string
-               (replace-regexp-in-string "\\`\n\\|\n\\'" "")
-               (format "\n%s")
-               (insert)))
+                  (replace-regexp-in-string "\\`\n\\|\n\\'" "")
+                  (format "\n%s")
+                  (insert)))
     (forward-char 1) (insert string)))
 
 (defun modeal-paste-before (&optional string)
@@ -287,9 +289,9 @@ of the motion. The rest of the logic will be handled automatically."
   (if (string-match "\n" string)
       (progn (beginning-of-line)
              (->> string
-               (replace-regexp-in-string "\\`\n\\|\n\\'" "")
-               (format "%s\n")
-               (insert)))
+                  (replace-regexp-in-string "\\`\n\\|\n\\'" "")
+                  (format "%s\n")
+                  (insert)))
     (insert string)))
 
 ;;;; Replacing
@@ -413,16 +415,19 @@ of the motion. The rest of the logic will be handled automatically."
   "e" forward-word
   "w" forward-to-word
   "b" backward-word
-  "W" ((search-forward-regexp "[ \t\n]")
-       (search-forward-regexp "[^ \t\n]")
-       (backward-char 1))
-  "E" ((forward-char 1)
-       (search-forward-regexp "[^ \t\n]")
-       (search-forward-regexp "[ \t\n]")
-       (backward-char 2))
-  "B" ((search-backward-regexp "[^ \t\n]")
-       (search-backward-regexp "[ \t\n]")
-       (forward-char 1))
+  "W" (@ modeal-forward-big-word
+         (search-forward-regexp "[ \t\n]")
+         (search-forward-regexp "[^ \t\n]")
+         (goto-char (1- (point))))
+  "E" (@ modeal-end-big-word
+         (forward-char 1)
+         (search-forward-regexp "[^ \t\n]")
+         (search-forward-regexp "[ \t\n]")
+         (goto-char (1- (point))))
+  "B" (@ modeal-back-big-word
+         (search-backward-regexp "[^ \t\n]")
+         (search-backward-regexp "[ \t\n]")
+         (forward-char 1))
   "0" beginning-of-line
   "^" beginning-of-line-text
   "$" end-of-line
@@ -435,7 +440,7 @@ of the motion. The rest of the logic will be handled automatically."
   "r" modeal-replace-char
   "R" modeal-replace-mode
   "v" (@ modeal-visual (set-mark-command nil) (rectangle-mark-mode 0))
-  "g v" (activate-mark)
+  "g v" (@ modeal-last-selection (activate-mark))
   "V" modeal-visual-line
   "C-v" rectangle-mark-mode
   "f" modeal-forward-find-letter
@@ -446,14 +451,14 @@ of the motion. The rest of the logic will be handled automatically."
   "s" modeal-kill
   "d" modeal-delete
   "c" modeal-change
-  "Y" (modeal-copy (modeal-around-line))
-  "S" (modeal-kill (modeal-around-line))
-  "D" (modeal-delete (modeal-around-line))
-  "C" (modeal-change (modeal-around-line))
-  "x" (modeal-delete (cons (point) (1+ (point))))
-  "z" (modeal-delete (cons (point) (1- (point))))
-  "X" (modeal-delete (cons (point) (progn (forward-word) (point))))
-  "Z" (modeal-delete (cons (point) (progn (backward-word) (point))))
+  "Y" (@ modeal-copy-line (modeal-copy (modeal-around-line)))
+  "S" (@ modeal-kill-line (modeal-kill (modeal-around-line)))
+  "D" (@ modeal-delete-line (modeal-delete (modeal-around-line)))
+  "C" (@ modeal-change-line (modeal-change (modeal-around-line)))
+  "x" (@ modeal-delete-forward-char (modeal-delete (cons (point) (1+ (point)))))
+  "z" (@ modeal-delete-backward-char (modeal-delete (cons (point) (1- (point)))))
+  "X" (@ modeal-delete-forward-word (modeal-delete (cons (point) (progn (forward-word) (point)))))
+  "Z" (@ modeal-delete-backward-word (modeal-delete (cons (point) (progn (backward-word) (point)))))
   "p" modeal-paste-after
   "P" modeal-paste-before
   "u" undo
@@ -477,7 +482,7 @@ of the motion. The rest of the logic will be handled automatically."
   "J" (@ qv/down4 (next-line 4))
   "g j" end-of-buffer
   "g k" beginning-of-buffer
-  "g h" beginning-of-line-text
+  "g h" beginning-of-line
   "g l" move-end-of-line
   "g H" beginning-of-line
   "C-M-j" end-of-buffer

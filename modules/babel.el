@@ -1,3 +1,22 @@
+(qv/package babel)
+
+;;; Configuration
+(setq org-confirm-babel-evaluate nil)
+
+(add-to-list 'org-babel-load-languages '(python . t))
+(setq org-babel-python-command "python3")
+
+(org-babel-do-load-languages
+ 'org-babel-load-languages
+ org-babel-load-languages)
+
+;; Automiatcally update images after running source code
+(add-hook 'org-babel-after-execute-hook
+          'org-display-inline-images)
+
+;; Set to a number to set pixel width
+(setq org-image-actual-width t)
+
 ;;; Indenting Code Blocks
 (defun qv/format-code-block-indentation ()
   (interactive)
@@ -17,7 +36,7 @@
                      (concat (replace-regexp-in-string
                               "#\\+BEGIN_SRC \\([^ ]+\\).*" "\\1"
                               (buffer-substring-no-properties
-                               (point) (save-excursion (end-of-line) (point))))
+                               (point) (line-end-position)))
                              "-mode"))))
 
     ;; Save and delete the contents of the source block
@@ -41,18 +60,3 @@
                        (current-indentation)
                        (- original-indentation)))))
 
-;;; Tangle File Keys
-(setq-default qv/tangle-file "")
-(defun qv/change-tangle-file ()
-  (interactive)
-  (setq-default qv/tangle-file
-                (format "./modules/%s.el"
-                        (read-string "Tangle File: (.el) ./modules/"))))
-
-(defun qv/put-tangle-file ()
-  (interactive)
-  (replace-string "#+BEGIN_SRC emacs-lisp\n"
-                  (format "#+BEGIN_SRC emacs-lisp :tangle %s\n" qv/tangle-file)))
-
-(global-set-key (kbd "C-c <f3>") 'qv/put-tangle-file)
-(global-set-key (kbd "C-c <f2>") 'qv/change-tangle-file)

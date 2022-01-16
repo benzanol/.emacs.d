@@ -24,9 +24,9 @@
 
 ;;; Basic Faces
 (when (display-graphic-p)
-  (qv/face default :fg fg :bg bg :f "Iosevka" :w normal :h 120)
-  (qv/face variable-pitch :f "Attractive" :w normal :h 1.05)
-  (qv/face fixed-pitch :f "Iosevka" :w normal :h 0.95))
+  (qv/face default :fg fg :bg bg :f "Iosevka" :w normal :h 64)
+  (qv/face variable-pitch :f "Attractive" :h 1.0)
+  (qv/face fixed-pitch :f "Iosevka" :w normal :h 1.0))
 
 (qv/face region :bg gray3)
 (qv/face highlight :fg "#EECC44" :bg nil :w bold :u "#EECC44" :e nil)
@@ -77,5 +77,5 @@
                       (+ (face-attribute face :height) increment)))
 
 (qv/keys *
-  "C-+" (change-font-size 'default 16)
+  "C-+" (change-font-size 'default +16)
   "C-_" (change-font-size 'default -16))

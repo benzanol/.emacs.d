@@ -11,7 +11,10 @@
  'org-mode
  '(("^ *\\([-]\\) "
     (0 (prog1 () (compose-region (match-beginning 1) (match-end 1) "•"))))
-   ("\\(^\n\\)" (1 '(:height 0.5)))))
+   ;; Make empty lines shorter
+   ("\\(^\n\\)" (1 '(:height 0.5)))
+   ;; Make indentation visible
+   ("^\\( +\\)" (1 'fixed-pitch))))
 
 (setq org-ellipsis " ")
 (setq org-src-tab-acts-natively nil)
@@ -20,9 +23,8 @@
 (setq org-pretty-entities t)
 (setq org-adapt-indentation nil)
 
-;;; Faces
-;;;; Outline Faces
-(qv/face qv/org-header :f "Droid Serif" :w bold)
+;;; Outline Faces
+(qv/face qv/org-header :f "Attractive" :w semibold)
 (qv/face org-document-title qv/org-header :fg fg :h 1.5)
 (qv/face org-document-info qv/org-header :fg fg :h 1.25)
 (qv/face org-level-1 qv/org-header :fg qv/blue :h 1.2)
@@ -30,30 +32,32 @@
 (qv/face org-level-3 qv/org-header :fg qv/red :h 1.2)
 (qv/face org-level-4 qv/org-header :fg qv/purple :h 1.2)
 
-;;;;; Special Faces
+;;; Special Faces
 (qv/face org-special-keyword fixed-pitch :fg gray2 :h 0.8)
 (qv/face org-table fixed-pitch)
 (qv/face org-meta-line org-special-keyword)
 (qv/face org-document-info-keyword org-special-keyword)
 (qv/face org-verbatim fixed-pitch :fg gray2)
-(qv/face org-code org-verbatim :fg bg2)
-(qv/face org-block fixed-pitch :fg bg2 :x t)
+(qv/face org-code org-verbatim :bg bg2)
+(qv/face org-block fixed-pitch :bg bg2 :x t)
 (qv/face org-block-begin-line org-block :fg gray3)
 (qv/face org-block-end-line org-block :fg gray3)
 (qv/face org-checkbox fixed-pitch)
 (qv/face org-ellipsis :u nil)
 
-;;;; Keybindings
+;;; Keybindings
 (qv/keys org-mode-map
   "C-c C-b" (insert "#+BEGIN_SRC emacs-lisp\n#+END_SRC")
   "C-c C-c" org-ctrl-c-ctrl-c
   "C-c C-t" org-todo
+  "M-k" org-move-item-up
+  "M-j" org-move-item-down
   "RET" (if insert-keymode (newline) (org-open-at-point))
   "SPC" outline-toggle-children
   "<backtab>" org-global-cycle
   "g =" qv/format-code-block-indentation)
 
-;;;; Hiding Text
+;;; Hiding Text
 (defvar qv/org-showing-meta-text nil
   "If non-nil, hide meta lines in org mode buffers.")
 
@@ -154,7 +158,7 @@ Otherwise, toggle drawers."
             (local-set-key (kbd "C-c C-h") 'qv/org-show-meta-text)
             (local-set-key (kbd "C-c C-S-h") 'qv/org-show-drawers)))
 
-;;;; Equation Overlays
+;;; Equation Overlays
 (qv/hook org-mode-hook qv/org-equation-overlays
   "Search the buffer for equations surrounded by ``, and
 italicize them using an overlay so as not to invalidate
@@ -269,3 +273,18 @@ are visible (full height) or invisible (tiny height).")
 (dolist (i qv/insert-symbols-alist)
   (global-set-key (kbd (concat "M-i " (car i)))
                   (eval `(lambda () (interactive) (insert ,(cdr i))))))
+
+;;; Org Appear
+(qv/package org-appear)
+(add-hook 'org-mode-hook 'org-appear-mode)
+;;; Pretty Symbols
+(qv/hook org-mode-hook qv/org-prettify-symbols
+  (qv/face org-checkbox fixed-pitch)
+  (setq-local prettify-symbols-alist
+              '(("[ ]" . ?○)
+                ("[X]" . ?●)
+                ("[-]" . ?⊙)))
+  (prettify-symbols-mode 1))
+
+(qv/face org-checkbox-statistics-todo fixed-pitch :h 0.75 :w bold :fg gray2)
+(qv/face org-checkbox-statistics-done fixed-pitch :h 0.75 :w bold :fg "LawnGreen")

@@ -1,4 +1,3 @@
-
 ;;; X Settings
 (shell-command "xgamma -gamma 1.2")
 (shell-command "xrandr -s 1920x1080")
@@ -49,55 +48,31 @@
             (add-hook 'exwm-input--event-hook 'qv/exwm-char-mode))))
   (call-interactively (key-binding key-sequence)))
 
-;;;; Sending Keys
-(defun qv/exwm-fake-key-current (event)
-  (qv/exwm-fake-key event (exwm--buffer->id (current-buffer))))
-
-(defun qv/exwm-fake-key (event id)
-  "Fake a key event equivalent to Emacs event EVENT."
-  (let* ((keysym (xcb:keysyms:event->keysym exwm--connection event))
-         keycode)
-    (when (= 0 (car keysym))
-      (user-error "[EXWM] Invalid key: %s" (single-key-description event)))
-    (setq keycode (xcb:keysyms:keysym->keycode exwm--connection
-                                               (car keysym)))
-    (when (/= 0 keycode)
-      (dolist (class '(xcb:KeyPress xcb:KeyRelease))
-        (xcb:+request exwm--connection
-            (make-instance 'xcb:SendEvent
-                           :propagate 0 :destination id
-                           :event-mask xcb:EventMask:NoEvent
-                           :event (xcb:marshal
-                                   (make-instance class
-                                                  :detail keycode
-                                                  :time xcb:Time:CurrentTime
-                                                  :root exwm--root :event id
-                                                  :child 0
-                                                  :root-x 0 :root-y 0
-                                                  :event-x 0 :event-y 0
-                                                  :state (cdr keysym)
-                                                  :same-screen 1)
-                                   exwm--connection)))))
-    (xcb:flush exwm--connection)))
-
 ;;;; Quitting
 (qv/keys exwm
-  "s-q" (eval (list (key-binding (kbd "C-g"))))
+  "s-q" (@ qv/keyboard-quit
+           (if (active-minibuffer-window)
+               (with-selected-window (active-minibuffer-window)
+                 (minibuffer-keyboard-quit))
+             (eval (list (key-binding (kbd "C-g"))))))
   ;; When deleting a window, go to the closest window in the layout
-  "s-w" (let ((remove (selected-window))
-              (goto (or (window-next-sibling) (window-prev-sibling))))
-          (while (and (windowp goto) (not (window-live-p goto)))
-            (setq goto (window-child goto)))
-          (select-window goto)
-          (delete-window remove))
+  "s-w" (@ qv/close-window
+           (let ((remove (selected-window))
+                 (goto (or (window-next-sibling) (window-prev-sibling))))
+             (while (and (windowp goto) (not (window-live-p goto)))
+               (setq goto (window-child goto)))
+             (select-window goto)
+             (delete-window remove)))
   "s-W" kill-buffer
   "s-C-w" (kill-buffer (current-buffer))
   "s-M-w" (switch-to-buffer "*scratch*"))
 
 ;;;; Activity manager
 (defun qv/switch-to-buffer (buffer)
-  (interactive (list (completing-read "Switch to Buffer: "
-                                      (mapcar 'buffer-name (buffer-list)))))
+  (interactive
+   (list (completing-read
+          "Switch to Buffer: "
+          (mapcar 'buffer-name (buffer-list)))))
   (switch-to-buffer buffer))
 
 (qv/keys exwm
@@ -164,17 +139,9 @@
   "s-C-M-h" windmove-swap-states-left
   "s-C-M-l" windmove-swap-states-right
   "s-C-M-j" windmove-swap-states-down
-  "s-C-M-k" windmove-swap-states-up
+  "s-C-M-k" windmove-swap-states-up)
 
-  "s-H" ((split-window nil nil 'right)
-         (switch-to-buffer "*scratch*"))
-  "s-L" ((split-window nil nil 'left)
-         (switch-to-buffer "*scratch*"))
-  "s-J" ((split-window nil nil 'up)
-         (switch-to-buffer "*scratch*"))
-  "s-K" ((split-window nil nil 'down)
-         (switch-to-buffer "*scratch*")))
-
+;;;; Resizing Windows
 (defun qv/window-resize (delta horizontal)
   (let ((before-fixed window-size-fixed))
     (setq-local window-size-fixed nil)
@@ -191,6 +158,20 @@
   "s-M-L" (qv/window-resize +16 t)
   "s-M-J" (qv/window-resize -5 nil)
   "s-M-K" (qv/window-resize +5 nil))
+
+;;;; Splitting Windows
+(qv/keys exwm
+  "s-H" ( qv/split-window 'left)
+  "s-L" ( qv/split-window 'right)
+  "s-J" ( qv/split-window 'down)
+  "s-K" ( qv/split-window 'up))
+
+;; Neither function works on both operating systems
+;;;;; Works on debian
+(defun qv/split-window (direction)
+  (let ((window-size-fixed nil))
+    (select-window (split-window nil nil direction))
+    (switch-to-buffer "*scratch*")))
 
 ;;; Configuration
 (exwm-enable)
@@ -212,8 +193,6 @@
            (expand-file-name "~/Media/Wallpaper/")
            wallpaper)))
 (qv/set-wallpaper "RedNebulaWallpaper.jpeg")
-
-(shell-command "feh --bg-scale /home/adam/Media/Wallpaper/RedNebulaWallpaper.jpeg")
 
 ;;;; Audio Settings
 (defun qv/current-pulseaudio-sink ()
@@ -269,21 +248,19 @@ If SINK is specified, use that as the output device instead of the active sink"
   "Change the system brightness by DELTA using xrandr. \
 If delta is a float, multiply the current brightness by delta instead. \
 If MONITOR is specified, change the brightness of it instead of eDP-1"
-  (setq qv/system-brightness (min 1.5 (max 0 (+ qv/system-brightness delta))))
-  (shell-command (concat "xrandr --output "
-                         (or monitor "eDP-1")
-                         " --brightness "
-                         (number-to-string qv/system-brightness)))
-  (message (concat "Brightness is now "
-                   (substring
-                    (concat (number-to-string
-                             (* 0.01 (round qv/system-brightness 0.01)))
-                            "0000")
-                    0 4))))
+  (setq qv/system-brightness (min 1.0 (max 0.01 (+ qv/system-brightness delta))))
+  (let ((xrandr-cmd
+         (format "xrandr --output %s --brightness %s"
+                 (or monitor "eDP-1") qv/system-brightness))
+        (brightnessctl-cmd
+         (format "brightnessctl s %s%%"
+                 (round (* 100 qv/system-brightness)))))
+    (shell-command brightnessctl-cmd)
+    (message "Brightness is now %s%%" (round (* 100 qv/system-brightness)))))
 
 (qv/keys exwm
-  "<XF86MonBrightnessUp>" (qv/change-brightness 0.05)
-  "<XF86MonBrightnessDown>" (qv/change-brightness -0.05))
+  "<XF86MonBrightnessUp>" (qv/change-brightness 0.01)
+  "<XF86MonBrightnessDown>" (qv/change-brightness -0.01))
 
 ;;;; Xinput
 (setq qv/xinput-tapping-enabled 0)
@@ -299,6 +276,7 @@ If MONITOR is specified, change the brightness of it instead of eDP-1"
   (string-to-number
    (shell-command-to-string (concat "xinput list | grep '" device-name
                                     "[ 	]*id=' | sed \"s/.*id=\\\\([0-9]*\\\\).*/\\\\1/\""))))
+
 (defun qv/xinput-property-number (device property-name)
   "Return the number of the property with PROPERTY-NAME
 for the device with id or name of DEVICE"
@@ -308,6 +286,7 @@ for the device with id or name of DEVICE"
             (number-to-string (if (numberp device) device
                                 (qv/xinput-id device)))
             " | sed -n \"s/.*" property-name " *(\\\\([0-9]*\\\\).*/\\\\1/p\""))))
+
 (defun qv/xinput-set-property (device property value)
   (interactive
    (let ((id (qv/xinput-id

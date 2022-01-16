@@ -35,7 +35,7 @@ but BUFFERS specifies which should be used instead."
   "Delete ACTIVITY from the activities list"
   (interactive (list (completing-read "Remove Activity: " qv/activities)))
   (when (symbolp activity) (setq activity (format "%s" activity)))
-  (setq qv/activities (--remove (string= (car it) activity) qv/activities)))
+  (setq qv/activities (seq-remove (lambda (x) (string= (car x) activity)) qv/activities)))
 
 (defvar qv/last-activity nil "The last activity used before the current one.")
 

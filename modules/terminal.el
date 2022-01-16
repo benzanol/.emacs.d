@@ -8,7 +8,6 @@
 
 (defun qv/term-setup ()
   (interactive)
-  (buffer-face-set 'fixed-pitch)
   (display-line-numbers-mode 0)
   (setq-local scroll-margin 0)
   (setq-local maximum-scroll-margin 0.0)

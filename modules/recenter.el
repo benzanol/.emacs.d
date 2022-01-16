@@ -15,4 +15,7 @@
 (defun disable-recenter-cursor ()
   (interactive)
   (recenter-cursor-mode 0))
-(add-hook 'minibuffer-setup-hook 'disable-recenter-cursor)
+
+(mapcar (lambda (hook) (add-hook hook 'disable-recenter-cursor))
+        '(minibuffer-setup-hook
+          calendar-mode-hook))

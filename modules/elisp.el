@@ -1,3 +1,7 @@
+;;; Make *scratch* elisp
+(with-current-buffer "*scratch*"
+  (emacs-lisp-mode))
+
 ;;; Outline Mode
 (qv/require outline)
 (qv/hook emacs-lisp-mode-hook qv/elisp-outline
@@ -17,13 +21,13 @@
         '(("lambda" . "λ")))
   (prettify-symbols-mode))
 
+;;; Eval at Point
 (qv/keys emacs-lisp-mode-map
   "C-e" (if mark-active (eval-region (min (point) (mark)) (max (point) (mark))) (eval-last-sexp nil))
   "C-r" (lambda (arg) (interactive "P")
           (if arg (qv/expand-replace) (qv/eval-replace)))
   "C-M-i" nil)
 
-;;; Eval at Point
 (defun qv/eval-replace ()
   (interactive)
   (let ((output (eval-last-sexp nil))
@@ -44,3 +48,6 @@
     (goto-char (marker-position marker))
     (insert ")")
     (qv/eval-replace)))
+;;; Flycheck
+(require 'flycheck)
+(add-to-list 'flycheck-disabled-checkers 'emacs-lisp-checkdoc)

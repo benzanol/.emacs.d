@@ -116,7 +116,7 @@ HOOK can also be a list of hooks."
    ((eq key :sparse) (if (and (boundp map) (keymapp (eval map)))
                          `(setcdr ,map nil) `(setq ,map (make-sparse-keymap))))
    ((eq key :full) (if (and (boundp map) (keymapp (eval map)))
-                       `(setcdr ,map (cdr (make-keymap))) `(setq ,map (make-sparse-keymap))))
+                       `(setcdr ,map (cdr (make-keymap))) `(setq ,map (make-keymap))))
    (t (setq key (cond ((stringp key) (kbd key)) ((numberp key) (vector key)) (t key)))
       `(,@(or (plist-get qv/keybinding-abbrevs map) (list 'define-key map)) ,key
         ,(cond ((and (listp binding) (eq (car binding) '\,)) (cadr binding))

@@ -1,5 +1,7 @@
 (load-file "~/.emacs.d/my-packages/echo-bar.el/echo-bar.el")
 
+(echo-bar-enable)
+
 (with-current-buffer " *Echo Area 0*" (buffer-face-set 'mode-line))
 
 (setq echo-bar-show-in-minibuffer nil)

@@ -2,4 +2,4 @@
 (shell-command "xmodmap ~/.Xmodmap")
 
 ;;; Key Repeat
-(shell-command "xset r rate 200 20")
+(shell-command "xset r rate 250 20")

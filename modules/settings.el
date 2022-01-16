@@ -2,6 +2,9 @@
 (qv/hook shell-mode-hook qv/shell-mode-setup
   (buffer-face-set 'fixed-pitch))
 
+;;; Prevent Clutter in init.el
+(setq custom-file "/dev/null")
+
 ;;; Disable C-z
 (global-unset-key (kbd "C-z"))
 
@@ -27,9 +30,6 @@
 
 ;;; Wrapping lines
 (setq-default truncate-lines t)
-
-;;; Also Quit Minibuffer
-(advice-add 'keyboard-quit :before 'minibuffer-keyboard-quit)
 
 ;;; Move to Trash
 (setq-default delete-by-moving-to-trash t)
