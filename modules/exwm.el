@@ -1,5 +1,4 @@
 ;;; X Settings
-(shell-command "xgamma -gamma 1.2")
 (shell-command "xrandr -s 1920x1080")
 (set-frame-size (selected-frame) 1900 1080 t)
 
@@ -53,7 +52,7 @@
   "s-q" (@ qv/keyboard-quit
            (if (active-minibuffer-window)
                (with-selected-window (active-minibuffer-window)
-                 (minibuffer-keyboard-quit))
+                 (keyboard-escape-quit))
              (eval (list (key-binding (kbd "C-g"))))))
   ;; When deleting a window, go to the closest window in the layout
   "s-w" (@ qv/close-window

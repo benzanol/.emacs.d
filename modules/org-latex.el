@@ -10,7 +10,13 @@
       (org-latex-preview '(16))
     (org-latex-preview '(64))))
 
+(qv/package org-fragtog)
+
 (qv/hook org-mode-hook qv/setup-org-latex
-  (qv/toggle-latex 0)
-  (local-set-key (kbd "C-c C-l") 'qv/toggle-latex))
-(plist-put org-format-latex-options :scale 3)
+  (org-fragtog-mode 1))
+
+(qv/keys org-mode-map
+  "C-c C-l" qv/toggle-latex
+  "M-\\" ((insert "\\(  \\)") (backward-char 3)))
+
+(plist-put org-format-latex-options :scale 1.2)

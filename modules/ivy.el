@@ -27,7 +27,9 @@
 (setcdr (assoc t ivy-sort-functions-alist) 'ivy-prescient-sort-function)
 
 ;;; Custom formatting
-(setq ivy-format-functions-alist '((t . qv/ivy-format)))
+(setq ivy-format-functions-alist
+      '((counsel-fonts . ivy-format-function-default)
+        (t . qv/ivy-format)))
 
 (defun qv/ivy-format (cands)
   (ivy--format-function-generic
@@ -79,6 +81,7 @@
 (add-to-list 'ivy-height-alist '(execute-extended-command . 10))
 (add-to-list 'ivy-height-alist '(helpful-callable . 10))
 (add-to-list 'ivy-height-alist '(helpful-variable . 10))
+(add-to-list 'ivy-height-alist '(counsel-fonts . 40))
 
 ;;; Counsel
 (qv/package counsel)

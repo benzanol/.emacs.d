@@ -2,35 +2,42 @@
 
 ;;; Configuration
 (qv/hook org-mode-hook qv/org-mode-setup
-  (ignore-errors (org-connect-show-separator))
-  (variable-pitch-mode 1)
+  (buffer-face-set 'qv/org-text)
   (setq line-spacing 0.2)
   (display-line-numbers-mode 0))
 
 (font-lock-add-keywords
  'org-mode
- '(("^ *\\([-]\\) "
-    (0 (prog1 () (compose-region (match-beginning 1) (match-end 1) "•"))))
-   ;; Make empty lines shorter
+ '(;; Display dashes as bullets
+   ("^ *\\([-]\\) "
+    (0 (ignore (compose-region (match-beginning 1) (match-end 1) "•"))))
+   ;; Make empty lines half height
    ("\\(^\n\\)" (1 '(:height 0.5)))
-   ;; Make indentation visible
-   ("^\\( +\\)" (1 'fixed-pitch))))
+   ;; Make indentation noticable
+   ("^\\( +\\)" (1 'fixed-pitch))
+   ;; Hide leading stars
+   ("^\\*+ " (0 'org-hide))))
+
+(qv/face org-hide :h 0.1)
 
 (setq org-ellipsis " ")
+(setq org-startup-indented nil)
 (setq org-src-tab-acts-natively nil)
 (setq org-return-follows-link t)
 (setq org-hide-emphasis-markers t)
+(setq org-hide-leading-stars nil)
 (setq org-pretty-entities t)
 (setq org-adapt-indentation nil)
 
 ;;; Outline Faces
-(qv/face qv/org-header :f "Attractive" :w semibold)
+(qv/face qv/org-text serif)
+(qv/face qv/org-header qv/org-text :w medium :h 1.0)
 (qv/face org-document-title qv/org-header :fg fg :h 1.5)
 (qv/face org-document-info qv/org-header :fg fg :h 1.25)
-(qv/face org-level-1 qv/org-header :fg qv/blue :h 1.2)
-(qv/face org-level-2 qv/org-header :fg qv/yellow :h 1.2)
-(qv/face org-level-3 qv/org-header :fg qv/red :h 1.2)
-(qv/face org-level-4 qv/org-header :fg qv/purple :h 1.2)
+(qv/face org-level-1 qv/org-header :w bold :h 1.6 :u nil)
+(qv/face org-level-2 qv/org-header :w medium :h 1.3 :s italic :u t)
+(qv/face org-level-3 qv/org-header :h 1.0)
+(qv/face org-level-4 qv/org-header :h 1.0)
 
 ;;; Special Faces
 (qv/face org-special-keyword fixed-pitch :fg gray2 :h 0.8)
@@ -39,7 +46,7 @@
 (qv/face org-document-info-keyword org-special-keyword)
 (qv/face org-verbatim fixed-pitch :fg gray2)
 (qv/face org-code org-verbatim :bg bg2)
-(qv/face org-block fixed-pitch :bg bg2 :x t)
+(qv/face org-block fixed-pitch :bg bg2 :x t :h 0.9)
 (qv/face org-block-begin-line org-block :fg gray3)
 (qv/face org-block-end-line org-block :fg gray3)
 (qv/face org-checkbox fixed-pitch)
@@ -50,8 +57,8 @@
   "C-c C-b" (insert "#+BEGIN_SRC emacs-lisp\n#+END_SRC")
   "C-c C-c" org-ctrl-c-ctrl-c
   "C-c C-t" org-todo
-  "M-k" org-move-item-up
-  "M-j" org-move-item-down
+  "{" org-move-item-up
+  "}" org-move-item-down
   "RET" (if insert-keymode (newline) (org-open-at-point))
   "SPC" outline-toggle-children
   "<backtab>" org-global-cycle
@@ -189,11 +196,21 @@ other formatting."
 ;;; Visual Fill Column
 (qv/package visual-fill-column)
 
-(qv/hook org-mode-hook qv/visual-fill-column-hook
-  (setq visual-fill-column-width 100)
+(qv/hook org-mode-hook qv/visual-fill-column-setup
+  (setq visual-fill-column-width 30)
   (setq visual-fill-column-center-text t)
   (visual-fill-column-mode 1)
   (visual-line-mode 1))
+
+(defvar qv/org-width 0.5)
+(qv/hook window-state-change-hook qv/visual-column-update
+  (walk-windows
+   (lambda (win)
+     (with-selected-window win
+       (when visual-fill-column-mode
+         (let ((win (window-total-width)))
+           (setq visual-fill-column-width
+                 (min (round (* qv/org-width win)) (- win 8) 100))))))))
 
 ;;; Inserting Items
 (setq qv/insert-symbols-alist
@@ -234,6 +251,7 @@ other formatting."
         ("f 5 8" . "⅝")
         ("f 7 8" . "⅞")
         ("f 1 9" . "⅑")))
+
 (defface qv/delimiter '((t :height 0.1))
   "Face for easily changing whether equation delimiters (`)
 are visible (full height) or invisible (tiny height).")
@@ -248,6 +266,8 @@ are visible (full height) or invisible (tiny height).")
    ("√\\({\\)\\([^}\n]*\\)\\(}\\)"
     (1 '(:overline t :inherit qv/delimiter)) (2 '(:overline t))
     (3 '(:overline t :inherit qv/delimiter)))))
+
+
 
 (qv/keys *
   "M-i" nil
@@ -277,13 +297,23 @@ are visible (full height) or invisible (tiny height).")
 ;;; Org Appear
 (qv/package org-appear)
 (add-hook 'org-mode-hook 'org-appear-mode)
+(setq org-appear-autosubmarkers t)
+(setq org-appear-autolinks t)
+(setq org-appear-autoentities nil)
+
 ;;; Pretty Symbols
 (qv/hook org-mode-hook qv/org-prettify-symbols
   (qv/face org-checkbox fixed-pitch)
   (setq-local prettify-symbols-alist
-              '(("[ ]" . ?○)
+              `(("[ ]" . ?○)
                 ("[X]" . ?●)
-                ("[-]" . ?⊙)))
+                ("[-]" . ?⊙)
+                ("\\[" . "⟨⟨")
+                ("\\]" . "⟩⟩")
+                ("\\(" . "⟨")
+                ("\\)" . "⟩")
+                ("\\\\" . "⏎")
+                . ,prettify-symbols-alist))
   (prettify-symbols-mode 1))
 
 (qv/face org-checkbox-statistics-todo fixed-pitch :h 0.75 :w bold :fg gray2)

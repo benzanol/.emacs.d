@@ -1,3 +1,5 @@
+(qv/package magit)
+
 (qv/hook magit-mode-hook nil
   (undo-tree-mode 0))
 
@@ -5,6 +7,7 @@
   "j" nil "k" nil "h" nil "l" nil
   "J" nil "K" nil "H" nil "L" nil
   "g" nil
+  "M-w" nil
   "r" magit-refresh
   "R" magit-refresh-all
   "G" magit-checkout

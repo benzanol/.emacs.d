@@ -1,6 +1,6 @@
 (qv/package dash)
 
-;;; Automatic Set
+;;; Modify in place
 (defmacro : (var func &rest args)
   `(setf ,var (,func ,var . ,args)))
 
@@ -148,3 +148,40 @@
      (read-char (mapconcat
                  (lambda (var) (format "%s: %s" var (eval var)))
                  ',vars "\n"))))
+
+;;; New buffer
+(defun qv/new-buffer (name)
+  (interactive "sBuffer Name: ")
+  (switch-to-buffer (generate-new-buffer name)))
+;;; Read Unicode Chars
+(setq qv/unicode-chars nil)
+
+(defun qv/read-unicode-char ()
+  (interactive)
+  ;; Initialize the list of unicode chars if it isn't already
+  (unless qv/unicode-chars
+    (maphash (lambda (name num)
+               (push (format "%s\t %s" (string num) name)
+                     qv/unicode-chars))
+             (ucs-names))
+    (setq qv/unicode-chars (reverse qv/unicode-chars)))
+
+  (let ((result (completing-read "Unicode Char: " qv/unicode-chars)))
+    (insert (if (eq (aref result 0) ?\t) "\t"
+              (car (split-string result "\t"))))))
+
+
+
+;;; Read Fonts
+(defun qv/read-font ()
+  (interactive)
+  (let ((ex (concat "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                    "abcdefghijklmnopqrstuvwxyz"
+                    "0123456789"
+                    ",.;:?!@#$%^&*~_-=+()[]{}<>\"'`/|\\"))
+        (space (propertize "\t" 'display '(space :align-to 50))))
+    (insert
+     (completing-read
+      "Font Family:"
+      (--map (format "%s%s%s" it space (propertize ex 'face (list :family it)))
+             (font-family-list))))))

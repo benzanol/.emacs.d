@@ -19,14 +19,15 @@
 (unless (display-graphic-p)
   (qv/set-colors
    bg "#000000"
-   bg2 "#222222"
+   bg2 "#111111"
    bg3 "#000000"))
 
 ;;; Basic Faces
 (when (display-graphic-p)
-  (qv/face default :fg fg :bg bg :f "Iosevka" :w normal :h 64)
-  (qv/face variable-pitch :f "Attractive" :h 1.0)
-  (qv/face fixed-pitch :f "Iosevka" :w normal :h 1.0))
+  (qv/face default :fg fg :bg bg :f "Iosevka" :w normal :h 100)
+  (qv/face variable-pitch :f "IBM Plex Sans Condensed" :h 1.0)
+  (qv/face fixed-pitch :f "Iosevka" :w normal :h 1.0)
+  (qv/face serif :f "Cambria"))
 
 (qv/face region :bg gray3)
 (qv/face highlight :fg "#EECC44" :bg nil :w bold :u "#EECC44" :e nil)
@@ -41,7 +42,10 @@
 (qv/face mode-line :fg fg :bg bg2 :b nil :iv nil)
 (qv/face mode-line-inactive :fg gray2 :bg bg2 :b nil :iv nil)
 (qv/face fringe mode-line-inactive :bg nil)
-(qv/face vertical-border fringe :iv t)
+
+(if (display-graphic-p)
+    (qv/face vertical-border fringe :iv t)
+  (qv/face vertical-border :fg gray2 :s italic))
 
 (qv/face doom-modeline-buffer-modified (error bold))
 
@@ -72,10 +76,10 @@
 
 
 ;;; Global Font Size
-(defun change-font-size (face increment)
+(defun qv/change-face-height (face increment)
   (set-face-attribute face nil :height
                       (+ (face-attribute face :height) increment)))
 
 (qv/keys *
-  "C-+" (change-font-size 'default +16)
-  "C-_" (change-font-size 'default -16))
+  "C-+" (qv/change-face-height 'default +16)
+  "C-_" (qv/change-face-height 'default -16))

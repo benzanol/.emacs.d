@@ -63,8 +63,15 @@
   (let ((filename (dired-get-filename)))
     (if (file-directory-p filename)
         (progn (kill-buffer (current-buffer)) (dired filename))
-      (other-window 1)
+      (select-window qv/last-window)
       (find-file filename))))
+
+(setq qv/current-window (selected-window)
+      qv/last-window (selected-window))
+(qv/hook window-state-change-hook qv/remember-last-window
+  (unless (or (minibufferp nil) (eq qv/current-window (selected-window)))
+    (setq qv/last-window qv/current-window
+          qv/current-window (selected-window))))
 
 (defun qv/dired-up ()
   (interactive)

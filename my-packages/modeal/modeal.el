@@ -271,6 +271,26 @@ of the motion. The rest of the logic will be handled automatically."
   (search-backward (string char) (line-beginning-position) t)
   (forward-char 1))
 
+;;;; Big Words
+(defun modeal-forward-big-word ()
+  (interactive)
+  (search-forward-regexp "[ \t\n]")
+  (search-forward-regexp "[^ \t\n]")
+  (goto-char (1- (point))))
+
+(defun modeal-end-big-word ()
+  (interactive)
+  (forward-char 1)
+  (search-forward-regexp "[^ \t\n]")
+  (search-forward-regexp "[ \t\n]")
+  (goto-char (1- (point))))
+
+(defun modeal-back-big-word ()
+  (interactive)
+  (search-backward-regexp "[^ \t\n]")
+  (search-backward-regexp "[ \t\n]")
+  (forward-char 1))
+
 ;;;; Pasting
 (defun modeal-paste-after (&optional string)
   (interactive)
@@ -360,8 +380,8 @@ of the motion. The rest of the logic will be handled automatically."
 (defun modeal--visual-line-disable ()
   (setq modeal-visual-line-mode nil)
   (remove-overlays (point-min) (point-max) 'modeal-visual-line t)
-  (remove-hook 'post-command-hook 'modeal--visual-line-update)
-  (remove-hook 'deactivate-mark-hook 'modeal--visual-line-disable))
+  (remove-hook 'post-command-hook 'modeal--visual-line-update t)
+  (remove-hook 'deactivate-mark-hook 'modeal--visual-line-disable t))
 
 (defun modeal-visual-line ()
   (interactive)
@@ -369,8 +389,8 @@ of the motion. The rest of the logic will be handled automatically."
   (beginning-of-line)
   (set-mark-command nil)
   (end-of-line)
-  (add-hook 'post-command-hook 'modeal--visual-line-update)
-  (add-hook 'deactivate-mark-hook 'modeal--visual-line-disable))
+  (add-hook 'post-command-hook 'modeal--visual-line-update nil t)
+  (add-hook 'deactivate-mark-hook 'modeal--visual-line-disable nil t))
 
 ;;;; Adjusting Case
 (defun modeal-toggle-case ()
@@ -409,25 +429,21 @@ of the motion. The rest of the logic will be handled automatically."
 (modeal-keys modeal-normal-map
   :sparse t
   "h" backward-char
-  "j" (@ qv/down (next-line 1))
-  "k" (@ qv/up (previous-line 1))
+  "j" next-line
+  "k" previous-line
   "l" forward-char
   "e" forward-word
   "w" forward-to-word
   "b" backward-word
-  "W" (@ modeal-forward-big-word
-         (search-forward-regexp "[ \t\n]")
-         (search-forward-regexp "[^ \t\n]")
-         (goto-char (1- (point))))
-  "E" (@ modeal-end-big-word
-         (forward-char 1)
-         (search-forward-regexp "[^ \t\n]")
-         (search-forward-regexp "[ \t\n]")
-         (goto-char (1- (point))))
-  "B" (@ modeal-back-big-word
-         (search-backward-regexp "[^ \t\n]")
-         (search-backward-regexp "[ \t\n]")
-         (forward-char 1))
+  "W" (@ up-sexp
+         (if (in-string-p)
+             (and (search-backward-regexp "[^\\]\"" nil t)
+                  (forward-char))
+           (let ((pos (point)))
+             (while (ignore-errors (or (backward-sexp) (not (bobp)))))
+             (if (bobp) (goto-char pos) (search-backward "(" nil t)))))
+  "E" forward-sexp
+  "B" backward-sexp
   "0" beginning-of-line
   "^" beginning-of-line-text
   "$" end-of-line
@@ -474,6 +490,10 @@ of the motion. The rest of the logic will be handled automatically."
   "g u" modeal-downcase
   "g U" modeal-upcase
   "g =" (@ modeal-indent-buffer (indent-region (point-min) (point-max)))
+  "]" scroll-down
+  "[" scroll-up
+  "{" scroll-left
+  "}" scroll-right
   ;; Personal Preferences
   "M-q" (call-interactively (key-binding (kbd "C-g")))
   "H" (@ qv/left4 (backward-char 4))
@@ -496,11 +516,20 @@ of the motion. The rest of the logic will be handled automatically."
   :full t
   :parent (modeal-add-keymap-prefix modeal-normal-map "M-")
   "M-q" (insert-keymode 0)
-  "M-9" (@ insert-parens (insert "()") (backward-char))
-  "M-[" (@ insert-brackets (insert "[]") (backward-char))
-  "M-{" (@ insert-braces (insert "{}") (backward-char))
-  "M-\"" (@ insert-double-quotes (insert "\"\"") (backward-char))
-  "M-'" (@ insert-single-quotes (insert "''") (backward-char)))
+  "M-9" (@ insert-parens
+           (insert "(\n)") (lisp-indent-line)
+           (previous-line 1) (end-of-line))
+  "M-[" (@ insert-brackets
+           (insert "[\n]") (lisp-indent-line)
+           (previous-line 1) (end-of-line))
+  "M-{" (@ insert-braces
+           (insert "{\n}") (lisp-indent-line)
+           (previous-line 1) (end-of-line))
+  "M-\"" (@ insert-single-quotes
+           (insert "\"\"") (backward-char 1))
+  "M-'" (@ insert-double-quotes
+            (insert "\"\n\"") (lisp-indent-line)
+            (previous-line 1) (end-of-line)))
 (dolist (char (number-sequence 32 126))
   (define-key modeal-insert-map (vector char) 'self-insert-command))
 

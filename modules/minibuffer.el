@@ -16,8 +16,8 @@
 (qv/keys vertico-map
   :sparse t
   :parent minibuffer-local-map
-  [remap qv/down] vertico-next
-  [remap qv/up] vertico-previous
+  [remap next-line] vertico-next
+  [remap previous-line] vertico-previous
   [remap qv/down4] (@ qv/vertico-down4 (vertico-next 4))
   [remap qv/up4] (@ qv/vertico-up4 (vertico-previous 4))
   [remap exit-minibuffer] vertico-exit
@@ -25,6 +25,26 @@
   [remap end-of-buffer] vertico-last
   [remap beginning-of-buffer] vertico-first
   "<C-return>" vertico-exit-input)
+
+;;; Read file name
+(setq read-file-name-function 'qv/read-file-name)
+
+(defun qv/read-file-backspace ()
+  (interactive)
+  (if (not (string= "/" (substring (minibuffer-contents) -1)))
+      (delete-backward-char 1)
+    (let ((pos (point)))
+      (backward-char 1)
+      (or (and (search-backward "/" nil t) (forward-char 1))
+          (beginning-of-line))
+      (delete-region (point) pos))))
+
+(defun qv/read-file-name (&rest args)
+  (define-key minibuffer-local-map (kbd "DEL")
+    'qv/read-file-backspace)
+  (unwind-protect
+      (apply 'read-file-name-default args)
+    (define-key minibuffer-local-map (kbd "DEL") nil)))
 
 ;;; Custom Format
 (defun qv/vertico-format-args (args)
@@ -57,7 +77,7 @@
 
 ;;; Vertico posframe
 (qv/package vertico-posframe)
-(vertico-posframe-mode 1)
+(vertico-posframe-mode 0)
 
 (setq vertico-posframe-poshandler 'posframe-poshandler-frame-top-center)
 (setq vertico-posframe-width 90)
@@ -90,3 +110,4 @@
 
 ;;(setq embark-prompter 'embark-keymap-prompter)
 (setq embark-prompter 'embark-completing-read-prompter)
+(setq embark-indicators nil)

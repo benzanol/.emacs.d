@@ -4,7 +4,7 @@
   (let ((command-parts (split-string command "[ ]+")))
     (apply #'call-process `(,(car command-parts) nil 0 nil ,@(cdr command-parts)))))
 
-;;; Module Macro
+;;; Module Macros
 (defvar qv/loaded-modules nil
   "List of modules that have been loaded.")
 
@@ -29,6 +29,10 @@
 (defmacro qv/require (module)
   `(unless (qv/required ,module)
      (qv/load ',module)))
+
+(defmacro qv/after (package &optional module)
+  `(eval-after-load ',package
+     (lambda nil (qv/require ,(or module package)))))
 
 ;;; Package Management
 (require 'package)

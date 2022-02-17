@@ -1,75 +1,130 @@
-;; import java.io.{File, FileOutputStream}
+;;; Code:
 
-(defvar ob-scala-session nil
+(defvar ob-scala-process nil
   "Stores the scala repl process for executing scala code.")
 
-(defvar ob-scala-output-directory "/tmp/ob-scala"
-  "Directory for storing the output of org babel scala blocks.")
+(defvar ob-scala-output-file "/tmp/ob-scala-output"
+  "File for storing the code output.")
+
+(defvar ob-scala-directory "/tmp/ob-scala"
+  "Directory to store scala scripts.")
 
 (defvar ob-scala-output-buffer nil
   "Buffer that reads the output from executed scala code.")
 
+(defvar ob-scala-queue nil
+  "List of currently running or waiting scala processes.")
+
+(defvar ob-scala-use-ammonite nil
+  "Use ammonite instead of the default scala shell.")
+
 (defun ob-scala-start-session ()
-  (when (process-live-p ob-scala-session)
-    (kill-process ob-scala-session))
-  (setq ob-scala-session (start-process-shell-command "scala" "*ob-scala*" "scala")))
-
-(defun ob-scala-execute (string process &optional results name)
-  (message "RESULTS:%s" results)
-  (unless name (setq name (number-to-string (abs (random)))))
-  (unless results (setq results 'value))
-  (let ((out-file (format "%s/%s" ob-scala-output-directory name))
-        (null-file "/dev/null")
-        (print-end "print(\"----END----\")"))
-    (if (or (eq results 'value) (eq results 'output))
-        (prog1 out-file
-          (unless (file-regular-p out-file) (make-empty-file out-file))
-          (process-send-string
-           process
-           (format "Console.withOut(new java.io.FileOutputStream(new java.io.File(\"%s\"))){%s\n%s}\n"
-                   (if (eq results 'value) out-file null-file)
-                   (format "print(Console.withOut(new java.io.FileOutputStream(new java.io.File(\"%s\"))){%s})"
-                           (if (eq results 'output) out-file null-file)
-                           (if (eq results 'output) (format "%s\n%s" string print-end) string))
-                   print-end)))
-      (process-send-string
-       process (format "Console.withOut(new java.io.FileOutputStream(new java.io.File(\"%s\"))){%s}\n"
-                       null-file string))
-      nil)))
-
-(defun ob-scala-execute-block ()
+  "Create a new ammonite session in a buffer called *ob-scala*."
   (interactive)
-  (when-let* ((info (org-babel-get-src-block-info))
-              (props (nth 2 info))
-              (file (ob-scala-execute
-                     (cadr info)
-                     ob-scala-session
-                     (alist-get :result-type props)
-                     (nth 4 info)))
-              (marker (set-marker (make-marker) (point)))
-              (org-buf (current-buffer))
-              (output-buf
-               (or (get-file-buffer file)
-                   (save-window-excursion (find-file file)))))
-    (when (buffer-live-p ob-scala-output-buffer)
-      (kill-buffer ob-scala-output-buffer))
-    (setq ob-scala-output-buffer output-buf)
-    (org-babel-remove-result)
-    (org-babel-insert-result "Working...")
-    (with-current-buffer output-buf
-      (rename-buffer (concat " " (file-name-base buffer-file-name)))
-      (auto-revert-mode)
-      (setq-local
-       after-revert-hook
-       `(lambda ()
-          (with-current-buffer ,output-buf
-            (when (string= "----END----"(buffer-substring (- (point-max) 11) (point-max)))
-              (ob-scala-display-result (buffer-substring 1 (- (point-max) 11)) ,marker)
-              (kill-buffer ,output-buf))))))))
+  ;; Kill the previous process if its still running
+  (when (process-live-p ob-scala-process)
+    (kill-process ob-scala-process))
 
-(defun ob-scala-display-result (result marker)
-  (with-current-buffer (marker-buffer marker)
-    (save-excursion
-      (goto-char (marker-position marker))
-      (org-babel-remove-result)
-      (org-babel-insert-result result))))
+  ;; Reset the queue
+  (setq ob-scala-queue nil)
+  
+  ;; Prepare the output buffer
+  (setq ob-scala-output-buffer
+        (save-window-excursion (find-file ob-scala-output-file)))
+  (with-current-buffer ob-scala-output-buffer
+    (auto-revert-mode 0)
+    (delete-region (point-min) (point-max))
+    (write-file ob-scala-output-file)
+    (auto-revert-mode 1)
+    (add-hook 'after-revert-hook 'ob-scala-check-output nil t))
+
+  ;; Start the scala session
+  (setq ob-scala-process
+        (start-process-shell-command
+         "scala" "*ob-scala*"
+         (format "%s > '%s'" (if ob-scala-use-ammonite "amm" "scala")
+                 ob-scala-output-file)))
+
+  ;; If using normal scala, add the :silent option to remove uneccessary output
+  (unless ob-scala-use-ammonite
+    (process-send-string ob-scala-process ":silent\n")))
+
+(defun ob-scala-check-output ()
+  "Check the output buffer to check if an actual output was produced."
+  (with-current-buffer ob-scala-output-buffer
+    ;; Locate the most recent :END: line, if there is one
+    (goto-char (point-max))
+
+    (when (search-backward-regexp "^:END:[0-9]+$" nil t)
+      ;; Check if actually at an :END: line
+      (let* ((end-pos (1- (point)))
+             (id-str (buffer-substring (+ (point) 5) (line-end-position)))
+             (assoc (assoc (string-to-number id-str) ob-scala-queue))
+             contents)
+        (when assoc
+          
+          ;; Remove the call with the id from the list of calls
+          (setq ob-scala-queue (delq assoc ob-scala-queue))
+          
+          ;; Parse the contents of the output
+          (when (and (functionp (cdr assoc))
+                     (search-backward (format "\n:BEGIN:%s\n" id-str) nil t))
+            (forward-line 2)
+            (setq contents (replace-regexp-in-string
+                            "\n+\\'" "" (buffer-substring (point) end-pos))))
+          
+          ;; Clear the output buffer
+          (shell-command-to-string (format "echo '' > '%s'" ob-scala-output-file))
+          
+          ;; Call the function
+          (when contents (funcall (cdr assoc) contents)))))))
+
+(defun ob-scala-execute (string &optional out-func)
+  "Execute STRING, and then call OUT-FUNC with the output.
+
+OUT-FUNC should be a function that takes one argument.
+The string form of the final value (not the entire output) will be
+passed as the argument."
+
+  (unless (process-live-p ob-scala-process)
+    (ob-scala-start-process))
+
+  (let* ((id (abs (random)))
+         (filename (format "%s/%s.scala" ob-scala-directory id))
+         (code (format "print(\"\\n%s%s\\n\")\n%s\nprint(\"\\n%s%s\\n\")"
+                       ":BEGIN:" id string ":END:" id)))
+    (make-directory ob-scala-directory t)
+    (if ob-scala-use-ammonite
+        (process-send-string ob-scala-process (format "{\n%s\n}\n" code))
+      
+      ;; Execute by creating and loading a temporary script file
+      (with-temp-buffer (insert code) (write-file filename))
+      (process-send-string ob-scala-process (format ":load %s\n" filename))
+      
+      ;; Execute by using the :paste option to insert multiple lines
+      ;;(process-send-string ob-scala-process (format ":paste\n%s\n" code))
+      ;;(process-send-string ob-scala-process (kbd "C-d"))
+      )
+    
+    (push (cons id out-func) ob-scala-queue)
+    id))
+
+(defun ob-scala-display-result-func (marker)
+  "Return a function to insert a result at MARKER"
+  `(lambda (result)
+     (with-current-buffer (marker-buffer ,marker)
+       (save-excursion
+         (goto-char (marker-position ,marker))
+         (org-babel-remove-result)
+         (org-babel-insert-result result)))))
+
+(defun org-babel-execute:scala (body params)
+  "Execute a block of scala code with org babel."
+  (interactive)
+  (let* ((m (set-marker (make-marker) (point)))
+         (r (alist-get :results params)))
+    (if (or (string= r "none") (string= r "silent"))
+        (ob-scala-execute body)
+      (ob-scala-execute body (ob-scala-display-result-func m)))
+    "Executing..."))
+

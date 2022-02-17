@@ -48,6 +48,7 @@
     (goto-char (marker-position marker))
     (insert ")")
     (qv/eval-replace)))
+
 ;;; Flycheck
-(require 'flycheck)
+(qv/package flycheck)
 (add-to-list 'flycheck-disabled-checkers 'emacs-lisp-checkdoc)
