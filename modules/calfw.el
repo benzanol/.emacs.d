@@ -1,5 +1,27 @@
 (qv/package calfw)
+(qv/package calfw-cal)
+(qv/package calfw-org)
 
-(qv/hook cfw:calendar-mode-hook nil
+(setq cfw:fchar-vertical-line ?│)
+(setq cfw:fchar-junction ?┼)
+(setq cfw:fchar-top-junction ?┬)
+(setq cfw:fchar-left-junction ?├)
+(setq cfw:fchar-right-junction ?┤)
+(setq cfw:fchar-top-left-corner ?┌)
+(setq cfw:fchar-top-right-corner ?┐)
+(setq cfw:fchar-horizontal-line ?─)
+
+(qv/face cfw:face-toolbar :bg nil)
+(qv/face cfw:face-title variable-pitch :h 2.0 :fg nil :w bold :s italic)
+(qv/face cfw:face-select :bg nil :u ,(qv/color yellow))
+(qv/face cfw:face-sunday :fg nil :w bold :s italic)
+(qv/face cfw:face-saturday :fg nil :w bold :s italic)
+(qv/face cfw:face-header :fg nil :w normal)
+(qv/face cfw:face-holiday :fg red :w normal :s italic)
+(qv/face cfw:face-disable :fg gray2 :s italic)
+(qv/face cfw:face-today-title :fg nil :bg nil :u ,(qv/color blue))
+
+(qv/hook cfw:calendar-mode-hook qv/calfw-setup
   (setq-local scroll-margin 0)
+  (recenter-cursor-mode 0)
   (display-line-numbers-mode 0))

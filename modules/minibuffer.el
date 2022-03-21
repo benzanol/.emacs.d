@@ -3,28 +3,30 @@
 (vertico-mode 1)
 (setq vertico-count 15)
 
-(qv/face minibuffer-prompt fixed-pitch :fg blue :w bold)
+(qv/face minibuffer-prompt :fg blue :w bold)
 
 (qv/keys minibuffer-local-map
   :sparse t
   "C-j" next-history-element
   "C-k" previous-history-element
-  "RET" exit-minibuffer
   "C-g" keyboard-escape-quit
-  "TAB" minibuffer-complete)
+  "TAB" minibuffer-complete
+  "<C-return>" exit-minibuffer
+  [remap newline] exit-minibuffer)
 
 (qv/keys vertico-map
   :sparse t
   :parent minibuffer-local-map
-  [remap next-line] vertico-next
-  [remap previous-line] vertico-previous
-  [remap qv/down4] (@ qv/vertico-down4 (vertico-next 4))
-  [remap qv/up4] (@ qv/vertico-up4 (vertico-previous 4))
-  [remap exit-minibuffer] vertico-exit
-  [remap minibuffer-complete] vertico-insert
+  [remap qvk-down] vertico-next
+  [remap qvk-up] vertico-previous
+  [remap qvk-down4] (@ qv/vertico-down4 (vertico-next 4))
+  [remap qvk-up4] (@ qv/vertico-up4 (vertico-previous 4))
   [remap end-of-buffer] vertico-last
   [remap beginning-of-buffer] vertico-first
-  "<C-return>" vertico-exit-input)
+
+  [remap newline] vertico-exit
+  [remap minibuffer-complete] vertico-insert
+  [remap minibuffer-exit] vertico-exit-input)
 
 ;;; Read file name
 (setq read-file-name-function 'qv/read-file-name)

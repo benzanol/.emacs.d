@@ -1,18 +1,17 @@
-;;; Shell Mode
-(qv/hook shell-mode-hook qv/shell-mode-setup
-  (buffer-face-set 'fixed-pitch))
-
 ;;; Prevent Clutter in init.el
 (setq custom-file "/dev/null")
 
 ;;; Disable C-z
-(global-unset-key (kbd "C-z"))
+(qv/key * "C-z" nil)
 
-;;; Disable Cliking Minibuffer
-(define-key minibuffer-inactive-mode-map [mouse-1] #'ignore)
+;;; Disable Clicking Minibuffer
+(qv/key minibuffer-inactive-mode-map [mouse-1] ignore)
 
 ;;; Y or N
 (advice-add 'yes-or-no-p :override 'y-or-n-p)
+
+;;; Don't ask for permission to use disabled commands
+(setq disabled-command-function nil)
 
 ;;; Remove GUI Elements
 (setq-default inhibit-startup-message t)
@@ -23,7 +22,7 @@
 
 ;;; Show Time
 (setq display-time-format "%h %d  %H:%M |")
-(display-time-mode 1)
+;;(display-time-mode 1)
 
 ;;; Theme Directory
 (setq custom-theme-directory "~/.emacs.d/themes")
@@ -48,6 +47,8 @@
 
 ;;; Line Numbers
 (global-display-line-numbers-mode t)
+(setq-default display-line-numbers-width 3)
+(setq-default display-line-numbers-grow-only t)
 
 ;;; Relative Window Size
 (setq window-combination-resize t)
@@ -59,7 +60,7 @@
 (setq-default x-stretch-cursor nil)
 
 ;;; Fringe Width
-(set-fringe-mode 10)
+;;(set-fringe-mode 10)
 
 ;;; Display Buffer
 (setq display-buffer-base-action '(display-buffer-same-window ()))

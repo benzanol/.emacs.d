@@ -10,37 +10,32 @@
     :parent special-mode-map
     [remap revert-buffer] helpful-update))
 
-(add-hook 'helpful-mode-hook 'variable-pitch-mode)
-
+;;; Make buffer variable pitch except for code
 (advice-add 'helpful-update :after 'qv/helpful-code-overlay)
 (defun qv/helpful-code-overlay ()
-  (save-excursion
-    (beginning-of-buffer)
+  (let ((inhibit-read-only t))
+    (variable-pitch-mode 1)
+    (save-excursion
+      (beginning-of-buffer)
 
-    (ignore-errors
-      (search-forward-regexp "^Signature$")
-      (next-line) (beginning-of-line)
-      (overlay-put
-       (make-overlay (point) (line-end-position))
-       'face 'fixed-pitch))
+      (when (search-forward-regexp "^Signature$" nil t)
+        (forward-line 1)
+        (add-face-text-property (point) (line-end-position) 'fixed-pitch t))
 
-    (ignore-errors
-      (search-forward-regexp "^References$")
-      (next-line 2) (beginning-of-line)
-      (overlay-put
-       (make-overlay (point) (search-forward-regexp "^$"))
-       'face 'fixed-pitch))
+      (when-let ((beg (search-forward-regexp "^References$" nil t))
+                 (end (search-forward-regexp "^Find all references" nil t)))
+        (goto-char beg) (forward-line 2)
+        (setq beg (point))
+        (goto-char end) (forward-line -1)
+        (add-face-text-property beg (point) 'fixed-pitch t))
 
-    (ignore-errors
-      (search-forward-regexp "^Source Code$")
-      (next-line) (beginning-of-line)
-      (overlay-put
-       (make-overlay
-        (point) (progn (search-forward-regexp "^Symbol Properties$\\|\\'")
-                       (previous-line 2) (end-of-line) (point)))
-       'face 'fixed-pitch))
+      
+      (when-let ((beg (search-forward-regexp "^\\(Alias \\)?Source Code\n" nil t))
+                 (end (search-forward-regexp "^Symbol Properties$\\|\\'" nil t)))
+        (forward-line -1)
+        (add-face-text-property beg (1- (point)) 'fixed-pitch t)
+        (lisp-indent-region beg (1- (point))))
 
-    (ignore-errors
-      (next-line 3) (beginning-of-line)
-      (overlay-put (make-overlay (point) (point-max))
-                   'face 'fixed-pitch))))
+      (when (search-forward-regexp "^Symbol Properties\n" nil t)
+        (add-face-text-property (point) (point-max) 'fixed-pitch t)))))
+

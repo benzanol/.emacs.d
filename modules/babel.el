@@ -20,43 +20,15 @@
 ;;; Indenting Code Blocks
 (defun qv/format-code-block-indentation ()
   (interactive)
-  (let ((case-fold-search t)
-        (original-pos (cons (line-number-at-pos) (current-column)))
-        (original-indentation (current-indentation))
-        (mode nil) (text nil) (beg nil) (end nil))
-    
-    ;; Find the start and end of the source block
-    (beginning-of-line)
-    (search-forward-regexp "^[ 	]*#\\+END_SRC")
-    (previous-line) (end-of-line) (setq end (point))
-    (search-backward-regexp "^[ 	]*#\\+BEGIN_SRC[ \n]")
-    
-    ;; Figure out the language of the source block
-    (setq mode (car (read-from-string
-                     (concat (replace-regexp-in-string
-                              "#\\+BEGIN_SRC \\([^ ]+\\).*" "\\1"
-                              (buffer-substring-no-properties
-                               (point) (line-end-position)))
-                             "-mode"))))
-
-    ;; Save and delete the contents of the source block
-    (next-line) (beginning-of-line) (setq beg (point))
-    (setq text (buffer-substring-no-properties beg end))
-    (delete-region beg end)
-
-    ;; Insert the contents into a temporary buffer, indent it, and copy it
-    (with-temp-buffer
-      (if (commandp mode)
-          (eval (list mode))
-        (emacs-lisp-mode))
-      (insert text)
-      (indent-region (buffer-end -1) (buffer-end 1))
-      (setq text (buffer-substring-no-properties (buffer-end -1) (buffer-end 1))))
-
-    ;; Return to the original buffer and insert the indented text
+  (let ((info (org-babel-get-src-block-info))
+        (elem (cadr (org-element-at-point)))
+        (pos (cons (line-number-at-pos) (current-column)))
+        text)
+    (with-current-buffer (format " *org-src-fontification:%s*" (org-src-get-lang-mode (car info)))
+      (indent-region (point-min) (point-max))
+      (setq text (buffer-string)))
+    (delete-region (save-excursion (goto-char (plist-get elem :begin)) (line-end-position))
+                   (save-excursion (goto-char (plist-get elem :end)) (forward-line -2) (point)))
     (insert text)
-    (goto-line (car original-pos))
-    (move-to-column (+ (cdr original-pos)
-                       (current-indentation)
-                       (- original-indentation)))))
-
+    (goto-line (car pos))
+    (forward-char (cdr pos))))

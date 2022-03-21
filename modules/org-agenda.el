@@ -3,18 +3,16 @@
 ;;; Restore Previous Layout
 (defun qv/org-agenda (&rest args)
   (interactive)
-  (let ((layout (current-window-configuration)))
-    (apply 'org-agenda args)
-    (set-window-configuration layout)
-    (switch-to-buffer "*Org Agenda*")))
+  (save-window-excursion
+    (apply 'org-agenda args))
+  (switch-to-buffer "*Org Agenda*"))
 
 ;;; Keybindings
 ;; Setup
-(add-hook 'org-agenda-mode-hook 'qv/org-agenda-setup)
-(defun qv/org-agenda-setup ()
+(qv/hook org-agenda-mode-hook qv/org-agenda-setup
   (display-line-numbers-mode 0)
-  (setcdr org-agenda-keymap nil)
   (qv/keys org-agenda-keymap
+    :sparse t
     "t" (org-agenda-todo "TODO")
     "f" (org-agenda-todo "DONE")
     "x" (org-agenda-todo "TODAY")
@@ -35,16 +33,16 @@
   "C-x C-a C-c" qv/agenda-capture)
 
 ;;; Faces
-(qv/face1 'org-agenda-structure nil nil nil :weight 'bold :height 1.2)
-(qv/face1 'org-agenda-date 'line-number nil nil)
-(qv/face1 'org-agenda-date-today 'org-agenda-date "#828292" nil
-          :weight 'bold :slant 'italic :underline t)
-(qv/face1 'org-time-grid nil qv/gray2-color nil)
+(qv/face org-agenda-structure :w bold :h 1.2)
+(qv/face org-agenda-date line-number)
+(qv/face org-agenda-date-today org-agenda-date :fg "#828292"
+         :w bold :s italic :u t)
+(qv/face org-time-grid :fg gray2)
 
-(qv/face1 'org-scheduled-previously nil qv/red-color nil)
-(qv/face1 'org-scheduled-today nil qv/yellow-color nil)
-(qv/face1 'org-agenda-done nil qv/green-color nil)
-(qv/face1 'org-scheduled nil nil nil)
+(qv/face org-scheduled-previously red)
+(qv/face org-scheduled-today yellow)
+(qv/face org-agenda-done green)
+(qv/face org-scheduled nil)
 
 ;; Format newlines to be smaller
 (defun qv/org-agenda-shrink-newlines ()
@@ -146,9 +144,6 @@
         ,(propertize (make-string 40 ?•) 'display '(height 0.7))))
 (setq org-agenda-current-time-string "──────────────────────────")
 
-(add-hook 'org-agenda-finalize-hook
-          (lambda () (setq window-size-fixed 'width)))
-
 ;;; Agenda Files
 (setq qv/org-agenda-dir (expand-file-name "~/Notes/Schedule"))
 (defun qv/org-agenda-files (&rest files)
@@ -161,7 +156,7 @@
       (make-empty-file today-file))
     today-file))
 
-(setq org-agenda-files (qv/org-agenda-files '("Events" "Tasks")))
+(setq org-agenda-files (qv/org-agenda-files "Events" "Tasks"))
 
 ;;; Captures
 (defun qv/agenda-capture ()
@@ -226,12 +221,12 @@
 (progn (setq org-habit-completed-string "▅"
              org-habit-filler-string "▃"
              org-habit-today-string "▁")
-       (qv/face1 'qv/org-habit 'fixed-pitch nil nil :height 1.1))
+       (qv/face qv/org-habit fixed-pitch :h 1.1))
 
 (progn (setq org-habit-completed-string "▣"
              org-habit-filler-string "□"
              org-habit-today-string "▨")
-       (qv/face1 'qv/org-habit 'fixed-pitch nil nil :height 1.2))
+       (qv/face qv/org-habit fixed-pitch :h 1.2))
 
 ;;;; Custom Habit Graph Function
 (setq qv/displayed-habits nil)
@@ -249,8 +244,7 @@
            (last-completed -1)
            (graph "")
            (space (propertize " " 'display `(space :align-to ,org-habit-graph-column)))
-           completed status face string
-           )
+           completed status face string)
       (dolist (date (number-sequence start end))
         (setq completed (memq date completed-dates)
               last-completed (if completed date last-completed)

@@ -63,7 +63,9 @@
   (let ((filename (dired-get-filename)))
     (if (file-directory-p filename)
         (progn (kill-buffer (current-buffer)) (dired filename))
-      (select-window qv/last-window)
+      (if (window-live-p qv/last-window)
+          (select-window qv/last-window)
+        (other-window 1))
       (find-file filename))))
 
 (setq qv/current-window (selected-window)

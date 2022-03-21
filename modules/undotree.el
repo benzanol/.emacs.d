@@ -1,6 +1,10 @@
 (qv/package undo-tree)
 
-(global-undo-tree-mode 1)
+;; Only enable in buffers associated with a file
+(qv/hook buffer-list-update-hook qv/undo-tree-mode
+  (with-current-buffer (car (buffer-list))
+    (when (and (buffer-file-name) (not undo-tree-mode))
+      (undo-tree-mode 1))))
 
 (setq undo-tree-history-directory-alist '(("." . "~/.emacs.d/undo-history"))
       undo-tree-auto-save-history t)
@@ -16,5 +20,6 @@
   (undo-tree-mode 0)
   (apply func args)
   (undo-tree-mode 1))
+
 ;; This makes undo tree not remember past version
 ;; (advice-add 'save-buffer :around 'qv/with-undo-tree-disabled)

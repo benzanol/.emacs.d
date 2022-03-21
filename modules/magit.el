@@ -18,3 +18,5 @@
 
 ;; When commiting, jump right to commit message
 (setq magit-commit-show-diff nil)
+
+;; ghp_TT13qgRNGS1VsEQRjsv4qxYcxZqgnB3txb

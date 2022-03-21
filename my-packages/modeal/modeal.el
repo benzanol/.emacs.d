@@ -56,7 +56,7 @@ to a key sequence."
                                 (if (vectorp key)
                                     key (vector key))))))
          (if (and all-levels (keymapp binding))
-             (modeal--add-keymap-prefix binding prefix t)
+             (modeal-add-keymap-prefix binding prefix t)
            binding)))
      keymap)
     new-map))
@@ -341,11 +341,12 @@ of the motion. The rest of the logic will be handled automatically."
 
 (defun track-column-advice (&rest args)
   (setq just-tracked t)
-  (let ((line-start (beginning-of-visual-line)))
-    (while (and (< (car (window-text-pixel-size nil line-start (point)))
-                   tracked-column)
-                (not (eolp)))
-      (forward-char 1))))
+  (unless (eq (line-beginning-position) (line-end-position))
+    (let ((line-start (beginning-of-visual-line)))
+      (while (and (< (car (window-text-pixel-size nil line-start (point)))
+                     tracked-column)
+                  (not (eolp)))
+        (forward-char 1)))))
 
 (defun track-column-postcmd ()
   (if just-tracked
@@ -429,8 +430,8 @@ of the motion. The rest of the logic will be handled automatically."
 (modeal-keys modeal-normal-map
   :sparse t
   "h" backward-char
-  "j" next-line
-  "k" previous-line
+  "j" (@ qv/down (next-line 1))
+  "k" (@ qv/up (previous-line 1))
   "l" forward-char
   "e" forward-word
   "w" forward-to-word
@@ -490,8 +491,8 @@ of the motion. The rest of the logic will be handled automatically."
   "g u" modeal-downcase
   "g U" modeal-upcase
   "g =" (@ modeal-indent-buffer (indent-region (point-min) (point-max)))
-  "]" scroll-down
-  "[" scroll-up
+  "]" scroll-up
+  "[" scroll-down
   "{" scroll-left
   "}" scroll-right
   ;; Personal Preferences
@@ -526,10 +527,10 @@ of the motion. The rest of the logic will be handled automatically."
            (insert "{\n}") (lisp-indent-line)
            (previous-line 1) (end-of-line))
   "M-\"" (@ insert-single-quotes
-           (insert "\"\"") (backward-char 1))
+            (insert "\"\"") (backward-char 1))
   "M-'" (@ insert-double-quotes
-            (insert "\"\n\"") (lisp-indent-line)
-            (previous-line 1) (end-of-line)))
+           (insert "\"\n\"") (lisp-indent-line)
+           (previous-line 1) (end-of-line)))
 (dolist (char (number-sequence 32 126))
   (define-key modeal-insert-map (vector char) 'self-insert-command))
 

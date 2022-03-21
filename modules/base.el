@@ -5,6 +5,8 @@
     (apply #'call-process `(,(car command-parts) nil 0 nil ,@(cdr command-parts)))))
 
 ;;; Module Macros
+(require 'benchmark)
+
 (defvar qv/loaded-modules nil
   "List of modules that have been loaded.")
 
@@ -16,10 +18,10 @@
                   (split-string (shell-command-to-string
                                  "ls ~/.emacs.d/modules"))))))
   (let ((file (format "~/.emacs.d/modules/%s.el" module)))
-    (if (not (ignore-errors (load-file file)))
-        (message "Error loading `%s`" file)
-      (message "Successfully loaded `%s`" file)
-      (push (intern (format "%s" module)) qv/loaded-modules))))
+    (if-let ((time (benchmark-elapse (ignore-errors (load file)))))
+        (progn (message "Module `%s` loaded in %s seconds" module time)
+               (add-to-list 'qv/loaded-modules (intern (format "%s" module))))
+      (message "Error loading `%s`" file))))
 
 (global-set-key (kbd "C-x C-l") 'qv/load)
 
@@ -114,26 +116,72 @@ HOOK can also be a list of hooks."
   "Plist of abbreviations mapped to forms that will bind a key when 2 arguments are added.")
 
 (defmacro qv/key (map key binding)
-  (declare (indent 2))
-  (cond
-   ((eq key :parent) `(set-keymap-parent ,map ,(if (keymapp binding) (list 'quote binding) binding)))
-   ((eq key :sparse) (if (and (boundp map) (keymapp (eval map)))
-                         `(setcdr ,map nil) `(setq ,map (make-sparse-keymap))))
-   ((eq key :full) (if (and (boundp map) (keymapp (eval map)))
-                       `(setcdr ,map (cdr (make-keymap))) `(setq ,map (make-keymap))))
-   (t (setq key (cond ((stringp key) (kbd key)) ((numberp key) (vector key)) (t key)))
-      `(,@(or (plist-get qv/keybinding-abbrevs map) (list 'define-key map)) ,key
-        ,(cond ((and (listp binding) (eq (car binding) '\,)) (cadr binding))
-               ((or (atom binding) (functionp binding) (keymapp binding)) (list 'quote binding))
-               ((memq (car binding) '(defun defmacro lambda)) binding)
-               ((eq (car binding) '@) `(defun ,(cadr binding) () (interactive) . ,(cddr binding)))
-               ((listp (car binding)) `(lambda () (interactive) . ,binding))
-               (t (eval `(lambda () (interactive) ,binding))))))))
+  (declare (indent 1))
+  (cond ((eq key :parent) `(set-keymap-parent ,map ,(if (keymapp binding) (list 'quote binding) binding)))
+        ((eq key :sparse) `(if (and (boundp ',map) (keymapp ,map))
+                               (setcdr ,map nil) (setq ,map (make-sparse-keymap))))
+        ((eq key :full) `(if (and (boundp ',map) (keymapp ,map))
+                             (setcdr ,map (cdr (make-keymap))) (setq ,map (make-keymap))))
+        ((eq key :prefix) `(let ((new (qv/add-keymap-prefix ,map ,(car binding) ,(nth 2 binding))))
+                             (if (and (boundp ',(cadr binding)) (keymapp ,(cadr binding)))
+                                 (setcdr ,(cadr binding) (cdr new)) (setq ,(cadr binding) new))))
+        (t (setq key (cond ((stringp key) (kbd key)) ((numberp key) (vector key)) (t key)))
+           `(,@(or (plist-get qv/keybinding-abbrevs map) (list 'define-key map)) ,key
+             ,(cond ((and (listp binding) (eq (car binding) '\,)) (cadr binding))
+                    ((or (atom binding) (functionp binding) (keymapp binding)) (list 'quote binding))
+                    ((memq (car binding) '(defun defmacro lambda)) binding)
+                    ((eq (car binding) '@) `(defun ,(cadr binding) () (interactive) . ,(cddr binding)))
+                    ((listp (car binding)) `(lambda () (interactive) . ,binding))
+                    (t (eval `(lambda () (interactive) ,binding))))))))
 
 (defmacro qv/keys (map &rest forms)
   (declare (indent 1))
-  (cons 'progn (mapcar (lambda (n) (macroexpand `(qv/key ,map ,(nth n forms) ,(nth (1+ n) forms))))
-                       (number-sequence 0 (1- (length forms)) 2))))
+
+  ;; Move prefix definitions to the end
+  (when (memq :prefix forms)
+    (let ((rev (reverse forms)))
+      (setq forms nil)
+      (while rev
+        (if (eq (cadr rev) :prefix)
+            (setq forms (append forms (list (cadr rev) (car rev)))
+                  rev (cddr rev))
+          (push (pop rev) forms) (push (pop rev) forms)))))
+
+  `(progn ,@(mapcar (lambda (n) `(qv/key ,map ,(nth n forms) ,(nth (1+ n) forms)))
+                    (number-sequence 0 (1- (length forms)) 2))
+          ',map))
+
+;;; Keymap prefix
+(defun qv/add-keymap-prefix (keymap prefix &optional recursive)
+  "Return a new keymap containing each of the keys in KEYMAP
+modified by PREFIX.
+
+PREFIX should be a string to add before the string representation of
+a keymap to modify it, for example \"M-\" would add the meta modifier
+to a key sequence."
+
+  (if (or (not (stringp prefix)) (eq prefix "")) keymap
+    (when (symbolp keymap) (setq keymap (symbol-value keymap)))
+    (unless (keymapp keymap) (error "Not a valid keymap: %s" keymap))
+    ;; Make the new keymap the same type as the input keymap
+    (let ((new-map (if (char-table-p (cadr keymap))
+                       (make-keymap)
+                     (make-sparse-keymap))))
+      ;; If `PREFIX` doesn't end in a space or dash, add a space
+      (setq prefix (replace-regexp-in-string "[^ -]$" "\\& " prefix))
+      ;; Add each modified binding to the new keymap
+      (map-keymap
+       (lambda (key binding)
+         (define-key new-map
+           (if (and (vectorp key) (eq (aref key 0) 'remap)) key
+             (kbd (concat prefix (key-description
+                                  (if (vectorp key)
+                                      key (vector key))))))
+           (if (and recursive (keymapp binding))
+               (qvk-add-keymap-prefix binding prefix t)
+             binding)))
+       keymap)
+      new-map)))
 
 ;;; Apply
 (defmacro qv/apply (func &rest applications)

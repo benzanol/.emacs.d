@@ -8,6 +8,7 @@
 
 (defun qv/term-setup ()
   (interactive)
+  (setq-local minor-mode-map-alist nil)
   (display-line-numbers-mode 0)
   (setq-local scroll-margin 0)
   (setq-local maximum-scroll-margin 0.0)

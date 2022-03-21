@@ -1,44 +1,41 @@
-(load-file "~/.emacs.d/my-packages/echo-bar.el/echo-bar.el")
+(qv/package echo-bar)
 
 (echo-bar-enable)
 
-(with-current-buffer " *Echo Area 0*" (buffer-face-set 'mode-line))
-
-(setq echo-bar-show-in-minibuffer nil)
-
 (setq echo-bar-function 'qv/echo-bar-function)
+(setq echo-bar-update-interval 1)
+(setq echo-bar-right-padding 8)
+(setq qv/echo-bar-height 1.2)
 
-(defun qv/colorize ()
-  (dolist (buf '(" *Echo Area 0*" " *Echo Area 1*" " *Minibuf-0*"))
+(defun qv/colorize-echo-bar ()
+  (dolist (buf '(" *Echo Area 0*" " *Echo Area 1*" " *Minibuf-0*" " *Minibuf-1*"))
     (with-current-buffer buf
       (buffer-face-set 'mode-line))))
-(setq-default mode-line-format nil)
 
-(defun qv/enlarge-icon (str)
-  (propertize str 'face '(:slant italic)))
+(add-hook 'post-command-hook 'qv/colorize-echo-bar)
 
 (defun qv/echo-bar-function ()
   (propertize
-   (format "%s%s  %s  │  %s%s  │  %s%s  "
-           #("   " 0 3 (invisible t))
-           #(" " 0 1 (display ((height 1.0) (raise 0.0))))
-           (qv/battery-format)
-           (qv/enlarge-icon "")
+   (format "%s%s %s%s%s  │  %s%s"
+           (propertize " " 'display `(height ,qv/echo-bar-height))
+           (or (ignore-errors (qv/activity-string)) "")
+           (or (ignore-errors (qv/battery-format)) "")
+           ""
            (format-time-string "  %b %d")
-           (qv/enlarge-icon "")
-           (format-time-string "  %H:%M"))))
+           ""
+           (format-time-string "  %H:%M:%S"))))
 
 (require 'battery)
 (defun qv/battery-format ()
-  (let* ((status (funcall battery-status-function))
-         (percent (round (string-to-number (battery-format "%p" status))))
-         (power-method (battery-format "%L" status)))
-    (format "%s %s   %s%%"
+  (when-let* ((func battery-status-function)
+              (status (funcall func))
+              (percent (round (string-to-number (battery-format "%p" status))))
+              (power-method (battery-format "%L" status)))
+    (format "%s %s   %s%%   |  "
             (if (string= power-method "AC") "⚡" "")
-            (qv/enlarge-icon
-             (cond ((>= percent 95) "")
-                   ((>= percent 70) "")
-                   ((>= percent 50) "")
-                   ((>= percent 15) "")
-                   (t "")))
+            (cond ((>= percent 95) "")
+                  ((>= percent 70) "")
+                  ((>= percent 50) "")
+                  ((>= percent 15) "")
+                  (t ""))
             percent)))

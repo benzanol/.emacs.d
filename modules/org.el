@@ -20,7 +20,7 @@
 
 (qv/face org-hide :h 0.1)
 
-(setq org-ellipsis " ")
+(setq org-ellipsis " ➾")
 (setq org-startup-indented nil)
 (setq org-src-tab-acts-natively nil)
 (setq org-return-follows-link t)
@@ -30,27 +30,29 @@
 (setq org-adapt-indentation nil)
 
 ;;; Outline Faces
-(qv/face qv/org-text serif)
+(qv/face qv/org-text variable-pitch)
 (qv/face qv/org-header qv/org-text :w medium :h 1.0)
-(qv/face org-document-title qv/org-header :fg fg :h 1.5)
+(qv/face org-document-title qv/org-header :fg fg :h 2.2 :u nil :s italic)
 (qv/face org-document-info qv/org-header :fg fg :h 1.25)
-(qv/face org-level-1 qv/org-header :w bold :h 1.6 :u nil)
-(qv/face org-level-2 qv/org-header :w medium :h 1.3 :s italic :u t)
-(qv/face org-level-3 qv/org-header :h 1.0)
-(qv/face org-level-4 qv/org-header :h 1.0)
+(qv/face org-level-1 qv/org-header :h 1.7 :w bold :u nil)
+(qv/face org-level-2 qv/org-header :h 1.3 :w bold :s normal :u nil)
+(qv/face org-level-3 qv/org-header :h 1.05 :w bold :u t)
+(qv/face org-level-4 qv/org-header :h 1.0 :u t :s italic)
 
 ;;; Special Faces
-(qv/face org-special-keyword fixed-pitch :fg gray2 :h 0.8)
-(qv/face org-table fixed-pitch)
-(qv/face org-meta-line org-special-keyword)
-(qv/face org-document-info-keyword org-special-keyword)
-(qv/face org-verbatim fixed-pitch :fg gray2)
+(qv/face org-special-keyword nil :fg nil :w bold)
+(qv/face org-meta-line fixed-pitch :fg gray2 :h 0.8)
+(qv/face org-document-info-keyword fixed-pitch :fg gray2 :h 0.8)
+(qv/face org-drawer org-meta-line :fg nil)
+(qv/face org-table fixed-pitch :fg yellow)
+(qv/face org-column org-table :bg nil)
+(qv/face org-verbatim fixed-pitch :fg gray2 :h 0.9)
 (qv/face org-code org-verbatim :bg bg2)
 (qv/face org-block fixed-pitch :bg bg2 :x t :h 0.9)
 (qv/face org-block-begin-line org-block :fg gray3)
 (qv/face org-block-end-line org-block :fg gray3)
 (qv/face org-checkbox fixed-pitch)
-(qv/face org-ellipsis :u nil)
+(qv/face org-ellipsis :fg gray2 :u nil)
 
 ;;; Keybindings
 (qv/keys org-mode-map
@@ -299,22 +301,26 @@ are visible (full height) or invisible (tiny height).")
 (add-hook 'org-mode-hook 'org-appear-mode)
 (setq org-appear-autosubmarkers t)
 (setq org-appear-autolinks t)
-(setq org-appear-autoentities nil)
+(setq org-appear-autoentities t)
 
 ;;; Pretty Symbols
 (qv/hook org-mode-hook qv/org-prettify-symbols
   (qv/face org-checkbox fixed-pitch)
   (setq-local prettify-symbols-alist
               `(("[ ]" . ?○)
-                ("[X]" . ?●)
+                ("[X]" . ?⊙)
                 ("[-]" . ?⊙)
-                ("\\[" . "⟨⟨")
-                ("\\]" . "⟩⟩")
+                ("\\[" . "⟨")
+                ("\\]" . "⟩")
                 ("\\(" . "⟨")
                 ("\\)" . "⟩")
                 ("\\\\" . "⏎")
+                ("\\sqrt" . "√")
                 . ,prettify-symbols-alist))
   (prettify-symbols-mode 1))
 
+(qv/face org-todo fixed-pitch :h 1.0 :w bold :fg red)
+(qv/face org-done fixed-pitch :h 1.0 :w bold :fg "LawnGreen")
+(qv/face org-headline-done :fg nil :u t :s italic)
 (qv/face org-checkbox-statistics-todo fixed-pitch :h 0.75 :w bold :fg gray2)
 (qv/face org-checkbox-statistics-done fixed-pitch :h 0.75 :w bold :fg "LawnGreen")

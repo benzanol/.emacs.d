@@ -4,12 +4,12 @@
  bg     "#1B1F26"
  bg2    "#14161B"
  bg3    "#1F252E"
- gray1  "#98A8AC"
+ gray1  "#98A8B0"
  gray2  "#7C8084"
  gray3  "#484B54"
  black  "#0E1216"
  red    "#D75F5F"
- yellow "#FFD75F"
+ yellow "#FFD760"
  orange "#FFA500"
  green  "#40E040"
  cyan   "#5FFFD7"
@@ -24,18 +24,19 @@
 
 ;;; Basic Faces
 (when (display-graphic-p)
-  (qv/face default :fg fg :bg bg :f "Iosevka" :w normal :h 100)
-  (qv/face variable-pitch :f "IBM Plex Sans Condensed" :h 1.0)
-  (qv/face fixed-pitch :f "Iosevka" :w normal :h 1.0)
-  (qv/face serif :f "Cambria"))
+  (qv/face default :fg fg :bg bg :f "Iosevka" :w normal :h 64)
+  (qv/face variable-pitch :f "IBM Plex Sans Condensed" :h 1.05)
+  (qv/face serif :f "Droid Serif")
+  (qv/face fixed-pitch :f "Iosevka" :w normal :h 0.95)
+  (qv/face fixed-pitch-serif fixed-pitch :f "Iosevka"))
 
 (qv/face region :bg gray3)
-(qv/face highlight :fg "#EECC44" :bg nil :w bold :u "#EECC44" :e nil)
+(qv/face highlight :fg "#EECC44" :bg nil :w semibold :u "#EECC44" :e nil)
 (qv/face shadow :fg gray2)
 (qv/face link :fg blue)
 (qv/face error :fg "#FF4444")
 
-(qv/face line-number fixed-pitch :fg gray2 :h 0.9)
+(qv/face line-number fixed-pitch :fg gray2 :h 0.95)
 (qv/face line-number-current-line line-number :fg gray1 :w bold)
 
 ;;; Layout Faces

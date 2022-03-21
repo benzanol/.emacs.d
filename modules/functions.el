@@ -173,15 +173,23 @@
 
 
 ;;; Read Fonts
+(when (ignore-errors ivy-format-functions-alist)
+  (push '(qv/read-font . ivy-format-function-default) ivy-format-functions-alist))
 (defun qv/read-font ()
   (interactive)
-  (let ((ex (concat "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                    "abcdefghijklmnopqrstuvwxyz"
-                    "0123456789"
-                    ",.;:?!@#$%^&*~_-=+()[]{}<>\"'`/|\\"))
-        (space (propertize "\t" 'display '(space :align-to 50))))
+  (let* ((ex (concat "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                     "abcdefghijklmnopqrstuvwxyz"
+                     "0123456789"
+                     ",.;:?!@#$%^&*~_-=+()[]{}<>\"'`/|\\"))
+         (space (propertize "\t" 'display '(space :align-to 50))))
     (insert
-     (completing-read
-      "Font Family:"
-      (--map (format "%s%s%s" it space (propertize ex 'face (list :family it)))
-             (font-family-list))))))
+     (car (split-string
+           (completing-read
+            "Font Family:"
+            (--map (format "%s%s%s" it space (propertize ex 'face (list :family it)))
+                   (font-family-list)))
+           "\t")))))
+;;; Base converter
+(defun decimal-to (num base)
+  (apply '+ (mapcar (lambda (p) (* (expt 10 p) (% (/ num (expt base p)) base)))
+                    (number-sequence 0 (if (eq num 0) 0 (floor (log num base)))))))

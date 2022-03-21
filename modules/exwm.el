@@ -49,11 +49,7 @@
 
 ;;;; Quitting
 (qv/keys exwm
-  "s-q" (@ qv/keyboard-quit
-           (if (active-minibuffer-window)
-               (with-selected-window (active-minibuffer-window)
-                 (keyboard-escape-quit))
-             (eval (list (key-binding (kbd "C-g"))))))
+  "s-q" qv/keyboard-quit
   ;; When deleting a window, go to the closest window in the layout
   "s-w" (@ qv/close-window
            (let ((remove (selected-window))
@@ -84,14 +80,8 @@
   "s-d" qv/switch-to-layout
   "s-D" qv/add-layout
   "s-C-d" qv/remove-layout
-  "s-c" (@ qv/next-activity (qv/switch-to-activity (car qv/last-activity)))
-  "s-C" (@ qv/previous-activity
-           (qv/switch-to-activity
-            (car (nth (mod (1+ (-elem-index
-                                qv/current-activity
-                                qv/activities))
-                           (length qv/activities))
-                      qv/activities)))))
+  "s-c" (@ qv/other-activity (qv/switch-to-activity (car qv/last-activity)))
+  "s-C" qv/customize-activity)
 
 ;;;; Logging out
 (qv/keys exwm
@@ -106,16 +96,16 @@
 (qv/keys exwm "<XF86AudioPlay>" (shell-command "playerctl play-pause"))
 
 ;;;; Clicking
-(qv/keys exwm
-  "s-c" (shell-command "xdotool click 1")
-  "s-M-c" (shell-command "xdotool click 3")
-  "s-C" (shell-command "xdotool click 3")
-  "s-C-c" (shell-command
-           (string-join
-            '("xdotool mousemove 960 540"
-              "xdotool click 1"
-              "xdotool mousemove 1920 1080")
-            " ; ")))
+;;(qv/keys exwm
+;;  "s-c" (shell-command "xdotool click 1")
+;;  "s-M-c" (shell-command "xdotool click 3")
+;;  "s-C" (shell-command "xdotool click 3")
+;;  "s-C-c" (shell-command
+;;           (string-join
+;;            '("xdotool mousemove 960 540"
+;;              "xdotool click 1"
+;;              "xdotool mousemove 1920 1080")
+;;            " ; ")))
 
 ;;;; Window management
 (qv/keys exwm
@@ -242,7 +232,7 @@ If SINK is specified, use that as the output device instead of the active sink"
   "<XF86AudioMute>" (qv/change-volume nil))
 
 ;;;; Brightness
-(setq qv/system-brightness 1.0)
+(setq qv/system-brightness 0.1)
 (defun qv/change-brightness (delta &optional monitor)
   "Change the system brightness by DELTA using xrandr. \
 If delta is a float, multiply the current brightness by delta instead. \
@@ -254,7 +244,7 @@ If MONITOR is specified, change the brightness of it instead of eDP-1"
         (brightnessctl-cmd
          (format "brightnessctl s %s%%"
                  (round (* 100 qv/system-brightness)))))
-    (shell-command brightnessctl-cmd)
+    (shell-command-to-string brightnessctl-cmd)
     (message "Brightness is now %s%%" (round (* 100 qv/system-brightness)))))
 
 (qv/keys exwm

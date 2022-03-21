@@ -1,7 +1,3 @@
-;;; Make *scratch* elisp
-(with-current-buffer "*scratch*"
-  (emacs-lisp-mode))
-
 ;;; Outline Mode
 (qv/require outline)
 (qv/hook emacs-lisp-mode-hook qv/elisp-outline
@@ -49,6 +45,6 @@
     (insert ")")
     (qv/eval-replace)))
 
-;;; Flycheck
-(qv/package flycheck)
-(add-to-list 'flycheck-disabled-checkers 'emacs-lisp-checkdoc)
+;;; Make *scratch* elisp
+(with-current-buffer "*scratch*"
+  (emacs-lisp-mode))
