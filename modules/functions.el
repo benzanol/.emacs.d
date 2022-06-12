@@ -193,3 +193,44 @@
 (defun decimal-to (num base)
   (apply '+ (mapcar (lambda (p) (* (expt 10 p) (% (/ num (expt base p)) base)))
                     (number-sequence 0 (if (eq num 0) 0 (floor (log num base)))))))
+;;; Linux App
+(setq qv/apps nil)
+(setq qv/app-directories '("/run/current-system/sw/share/applications/"))
+(defun qv/app (&optional arg)
+  (interactive "P")
+  ;; Stolen from counsel
+  (when (or (null qv/apps) arg)
+    (setq qv/apps nil)
+    ;; Loop through desktop files
+    (dolist (dir qv/app-directories)
+      (dolist (f (split-string
+                  (shell-command-to-string
+                   (format "find '%s' 2> /dev/null | %s"
+                           dir "grep '\\.desktop$'"))))
+        ;; Parse the name of each program and add it to the list
+        (push (cons (concat
+                     (or (ignore-errors
+                           (substring
+                            (shell-command-to-string
+                             (format "grep '^Name\\(\\[en_GB\\]\\)\\?=' '%s' | head -n 1" f))
+                            5 -1))
+                         "")
+                     (or (ignore-errors
+                           (concat
+                            " - "
+                            (substring
+                             (shell-command-to-string
+                              (format "grep '^Comment=' '%s' | head -n 1" f))
+                             8 -1)))
+                         ""))
+                    (ignore-errors
+                      (substring
+                       (shell-command-to-string
+                        (format "grep '^Exec=' '%s' | head -n 1" f))
+                       5 -1)))
+              qv/apps))))
+
+  (let ((app (assoc (completing-read "App: " (mapcar 'car qv/apps)) qv/apps)))
+    (start-process-shell-command
+     (car app) (format " <<%s>>" (car app))
+     (cdr app))))

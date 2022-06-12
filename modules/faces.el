@@ -11,7 +11,7 @@
  red    "#D75F5F"
  yellow "#FFD760"
  orange "#FFA500"
- green  "#40E040"
+ green  "#58D020"
  cyan   "#5FFFD7"
  blue   "#5FAFD7"
  purple "#AF87D7")
@@ -19,7 +19,7 @@
 (unless (display-graphic-p)
   (qv/set-colors
    bg "#000000"
-   bg2 "#111111"
+   bg2 "#000000"
    bg3 "#000000"))
 
 ;;; Basic Faces
@@ -53,7 +53,7 @@
 ;;; Font Lock Faces
 ;; Purple and Blue
 (qv/face font-lock-comment-face :fg gray2 :w bold :s italic)
-(qv/face font-lock-string-face :fg green :s italic)
+(qv/face font-lock-string-face :fg green :s normal)
 (qv/face font-lock-type-face :fg blue)
 (qv/face font-lock-keyword-face :fg purple :w bold)
 (qv/face font-lock-function-name-face :fg red)

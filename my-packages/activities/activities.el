@@ -176,7 +176,7 @@ Each element has the form (activity key icon)")
               (num (- key (aref (kbd "s-0") 0)))
               (icon (with-temp-buffer
                       (all-the-icons-insert)
-                      (buffer-substring-no-properties (point-min) (point-max))))
+                      (propertize (buffer-string) 'display '(raise 0.05))))
               (view (list cur key (format "%s %s" (propertize (format "%s" num) 'face 'bold) icon))))
     (setq qv/activity-view-alist
           (seq-remove (lambda (a) (or (string= (car a) cur) (eq (cadr a) key)))
@@ -194,22 +194,11 @@ Each element has the form (activity key icon)")
       (setq str (concat str cur " | ")))
     str))
 
-  (dotimes (i 10) (global-set-key (kbd (format "s-%s" i)) 'qv/activity-key))
+(dotimes (i 10) (global-set-key (kbd (format "s-%s" i)) 'qv/activity-key))
 
-  (setq qv/activity-view-alist
-        '(("browser" 8388657
-           #("1  " 0 1
-             (face bold)))
-          ("default" 8388658
-           #("2 " 0 1
-             (face bold)))
-          ("emacs" 8388659
-           #("3 " 0 1
-             (face bold)))
-          ("scala" 8388660
-           #("4 " 0 1
-             (face bold)))
-          ("arduino" 8388661
-           #("5 " 0 1
-             (face bold)))))
+(setq qv/activity-view-alist
+      '(("browser" 8388657 #("1  " 0 1 (face bold) 2 3 (display (raise 0.05))))
+        ("default" 8388658 #("2 " 0 1 (face bold) 2 3 (face (:family "all-the-icons") display (raise 0.05))))
+        ("emacs" 8388659 #("3 " 0 1 (face bold)))
+        ("scala" 8388660 #("4 " 0 1 (face bold) 2 3 (face (:family "all-the-icons") display (raise 0.05))))))
 

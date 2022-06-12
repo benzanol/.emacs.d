@@ -5,8 +5,8 @@
       company-tooltip-limit 10
       company-tooltip-margin 1
       company-idle-delay 0.0
-      company-tooltip-minimum-width 30
-      company-tooltip-maximum-width 50
+      company-tooltip-minimum-width 40
+      company-tooltip-maximum-width 80
       company-minimum-prefix-length 1
       company-tooltip-width-grow-only t
       company-auto-complete nil
@@ -14,8 +14,11 @@
 
 (defun qv/company-toggle-autocomplete ()
   (interactive)
-  (setq company-minimum-prefix-length
-        (if (eq company-minimum-prefix-length 1000) 1 1000)))
+  (if (eq company-minimum-prefix-length 1000)
+      (progn (setq company-minimum-prefix-length 1)
+             (message "Autocomplete enabled"))
+    (progn (setq company-minimum-prefix-length 1000)
+           (message "Autocomplete disabled"))))
 
 (add-hook 'insert-keymode-hook 'company-abort)
 
@@ -27,8 +30,6 @@
 (qv/face company-preview-search company-preview)
 (qv/face company-scrollbar-fg :bg gray2)
 (qv/face company-scrollbar-bg company-tooltip)
-
-(qv/keys modeal-insert-map "<C-tab>" company-complete)
 
 (qv/keys company-active-map
   :sparse t
@@ -49,3 +50,32 @@
 (dotimes (i 10)
   (define-key company-active-map (kbd (format "M-%s" (% (1+ i) 10)))
     (eval `(lambda () (interactive) (company--complete-nth ,i)))))
+
+(when (display-graphic-p)
+  (qv/package company-posframe)
+  (company-posframe-mode 1)
+
+  (qv/face company-posframe-quickhelp company-tooltip)
+  (qv/face company-posframe-quickhelp-header company-tooltip
+           :s italic :fg gray1)
+
+  (setq company-posframe-show-indicator nil)
+  (setq company-posframe-quickhelp-delay 0)
+  (setq company-posframe-quickhelp-show-header t)
+  (setq company-posframe-show-params '(:border-width 1 :border-color "gray50"))
+
+  ;; 69 is the unchangable width of the quickhelp window
+  (setq company-tooltip-minimum-width 69
+        company-tooltip-maximum-width 69)
+
+  (setq company-posframe-quickhelp-show-params
+        (plist-put company-posframe-quickhelp-show-params
+                   :poshandler 'company-posframe-quickhelp-bottom-poshandler))
+
+  (defun company-posframe-quickhelp-bottom-poshandler (_info)
+    (with-current-buffer company-posframe-buffer
+      (let ((pos posframe--last-posframe-pixel-position))
+        (let ((h (frame-pixel-height posframe--frame)))
+          (cons (car pos)
+                (if (< (+ (cdr pos) (* 2 h)) (frame-pixel-height)) (+ (cdr pos) h)
+                  (- (cdr pos) (frame-pixel-height posframe--frame) 40))))))))

@@ -125,16 +125,23 @@ to a key sequence."
   (define-key qvk-insert-map (vector char) 'self-insert-command))
 
 (qv/keys qvk-insert-map
+  "M-(" ((insert "()") (backward-char))
+  "M-{" ((insert "{}") (backward-char))
+  "M-[" ((insert "[]") (backward-char))
+  "M-'" ((insert "''") (backward-char))
+  "M-\"" ((insert "\"\"") (backward-char))
+  "S-SPC" (insert " ")
   "M-q" qvk-normal-mode
   "RET" newline)
 
 ;;;; Visual Map
 (qv/keys qvk-visual-map
   :sparse t
-  "M-q" deactivate-mark
   "o" exchange-point-and-mark)
 
-;;;; Normal Map
+(push (cons 'mark-active qvk-visual-map) minor-mode-map-alist)
+
+;;;; Normal Map 
 (qv/keys qvk-normal-map
   :full t
   :prefix ("M-" qvk-M-normal-map)
@@ -156,7 +163,7 @@ to a key sequence."
   "I" (@ qvk-insert-beginning-of-line
          (beginning-of-line-text) (qvk-insert-mode))
   "A" (@ qvk-insert-end (end-of-line) (qvk-insert-mode))
-  "o" (@ qvk-open-below (end-of-visual-line) (newline) (qvk-insert-mode))
+  "o" (@ qvk-open-below (end-of-visible-line) (newline) (qvk-insert-mode))
   "O" (@ qvk-open-above (beginning-of-line) (newline) (forward-line -1)
                         (qvk-insert-mode))
   "r" qvk-replace-char
@@ -183,8 +190,8 @@ to a key sequence."
          (let ((start (point)))
            (qvk-open-below) (qvk-normal-mode)
            (yank)
-           (delete-region (point) (search-backward-regexp
-                                   "\n+\\=" start t))))
+           (ignore-errors
+             (delete-region (point) (search-backward-regexp "\n+\\=" start)))))
   "P" yank
   "u" undo
   "/" qvk-search-forward
@@ -195,14 +202,16 @@ to a key sequence."
   "N" nonincremental-repeat-search-backward
   "m" point-to-register
   "`" jump-to-register
-  "~" qvk-toggle-case
+  "~" (@ qvk-toggle-case (if (memq (aref (buffer-substring (point) (1+ (point))) 0) (number-sequence ?A ?Z))
+                             (downcase-region (point) (1+ (point))) (upcase-region (point) (1+ (point))))
+                         (forward-char))
   "g u" qvk-downcase
   "g U" qvk-upcase
   "g =" (@ qvk-indent-buffer (indent-region (point-min) (point-max)))
   "]" scroll-up
   "[" scroll-down
-  "{" scroll-left
-  "}" scroll-right
+  "}" scroll-left
+  "{" scroll-right
   ;; Personal Preferences
   "M-q" (@ qv/keyboard-quit
            (if (active-minibuffer-window)
@@ -215,9 +224,10 @@ to a key sequence."
   "J" (@ qvk-down4 (next-line 4))
   "g j" end-of-buffer
   "g k" beginning-of-buffer
-  "g h" beginning-of-line-text
+  "g h" beginning-of-visual-line
   "g l" move-end-of-line
-  "g H" beginning-of-line
+  "g H" beginning-of-line-text
+  "g L" end-of-line
   "C-M-j" end-of-buffer
   "C-M-k" beginning-of-buffer
   "C-M-h" beginning-of-line
@@ -230,9 +240,6 @@ to a key sequence."
 
 (qvk-defkeymode qvk-normal-mode
   qvk-M-action-map)
-
-(qvk-defkeymode qvk-visual-mode
-  qvk-visual-map qvk-motion-map)
 
 (use-global-map (list 'keymap qvk-normal-map (current-global-map)))
 
@@ -281,7 +288,7 @@ to a key sequence."
 
 (qvk-defmotion qvk-around-line
   (beginning-of-visual-line)
-  (end-of-visual-line)
+  (end-of-visible-line)
   (goto-char (min (point-max) (1+ (point)))))
 
 (defun up-sexp ()
@@ -389,3 +396,27 @@ to a key sequence."
 (advice-add 'backward-word :around 'qvk-stay-on-line-advice)
 (advice-add 'forward-to-word :around 'qvk-stay-on-line-advice)
 (advice-add 'backward-to-word :around 'qvk-stay-on-line-advice)
+
+;;;; Special Mode Map
+(qv/keys special-mode-map
+  :sparse t
+  "r" revert-buffer
+  "q" (@ qvk-kill-buffer
+         (let ((buf (current-buffer)))
+           (bury-buffer) (kill-buffer buf))))
+
+;;;; Keep Column
+(qv/hook post-command-hook qvk-cursor-column
+  (if (not truncate-lines) (setq goal-column nil)
+    (when (boundp 'qvk-last-pos)
+      (when (or (not (eolp))
+                (and (eq (car qvk-last-pos) (line-number-at-pos))
+                     (not (eq (cdr qvk-last-pos) (current-column)))))
+        (setq-local goal-column (current-column))))
+    (when track-eol (end-of-line))
+
+    (set-face-attribute 'cursor nil :background
+                        (if track-eol (qv/color blue) "white"))
+
+    (setq-local qvk-last-pos (cons (line-number-at-pos) (current-column)))))
+

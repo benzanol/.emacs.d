@@ -8,7 +8,9 @@
   (qv/keys helpful-mode-map
     :sparse t
     :parent special-mode-map
-    [remap revert-buffer] helpful-update))
+    [remap revert-buffer] helpful-update
+    "TAB" forward-button
+    "<backtab>" backward-button))
 
 ;;; Make buffer variable pitch except for code
 (advice-add 'helpful-update :after 'qv/helpful-code-overlay)

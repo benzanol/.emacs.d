@@ -95,6 +95,7 @@
 ;;; Orderless
 (qv/package orderless)
 (setq completion-styles '(orderless))
+;;(setq completion-styles '(basic partial-completion emacs22 substring initials))
 
 ;;; Marginalia
 (qv/package marginalia)

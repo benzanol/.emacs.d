@@ -1,6 +1,8 @@
+(qv/require functions)
+
 ;;; X Settings
 (shell-command "xrandr -s 1920x1080")
-(set-frame-size (selected-frame) 1900 1080 t)
+(run-with-timer 1 nil (lambda () (set-frame-size (selected-frame) 1904 1080 t)))
 
 ;;; EXWM
 ;;;; Installing
@@ -8,15 +10,6 @@
 
 ;;;; EXWM Window Mode
 (setq exwm-manage-configurations '((t char-mode t)))
-
-;;;; Renaming EXWM Buffers
-(defun qv/exwm-update-class ()
-  (if (string= exwm-class-name ".blueman-applet-wrapped")
-      (kill-buffer nil))
-  (exwm-layout-hide-mode-line)
-  (exwm-workspace-rename-buffer (concat ":" exwm-class-name ":")))
-
-(add-hook 'exwm-update-class-hook 'qv/exwm-update-class)
 
 ;;;; Char Mode
 (defun qv/exwm-char-mode ()
@@ -36,7 +29,8 @@
   "s-r" qv/run-in-background
   "s-e" eval-expression
   "s-E" repeat-complex-command
-  "s-o" counsel-linux-app
+  ;;"s-o" qv/app
+  "s-o" (qv/run-in-background "rofi -show run")
   "s-s" qv/read-emacs-key-sequence)
 
 (defun qv/read-emacs-key-sequence (key-sequence)
@@ -86,9 +80,10 @@
 ;;;; Logging out
 (qv/keys exwm
   "s-C-Z" (shell-command "ps -ef | grep emacs | awk '{print $2}' | xargs kill")
-  "s-C-S-S" (shell-command
-             (format "%s & systemctl suspend"
-                     (expand-file-name "~/.bin/custom-lock")))
+  "s-C-S-S" ((ignore-errors (qv/emms-record-stop))
+             (shell-command
+              (format "%s & systemctl suspend"
+                      (expand-file-name "~/.bin/custom-lock"))))
   "s-C-R" (shell-command "systemctl reboot")
   "s-C-P" (shell-command "shutdown now"))
 
@@ -113,12 +108,12 @@
   "<s-tab>" other-frame
 
   "s-f" exwm-floating-toggle-floating
-  "s-F" exwm-layout-toggle-fullscreen
+  "s-F" qv/exwm-floating-center
 
-  "s-h" windmove-left
-  "s-l" windmove-right
-  "s-j" windmove-down
-  "s-k" windmove-up
+  "s-h" (qv/windmove 'left 50)
+  "s-l" (qv/windmove 'right 50)
+  "s-j" (qv/windmove 'down 50)
+  "s-k" (qv/windmove 'up 50)
 
   "s-C-h" qv/window-move-left
   "s-C-l" qv/window-move-right
@@ -130,12 +125,31 @@
   "s-C-M-j" windmove-swap-states-down
   "s-C-M-k" windmove-swap-states-up)
 
+(defun qv/windmove (dir dist)
+  (if exwm--floating-frame
+      (let ((dx (* dist (pcase dir ('right 1) ('left -1) (_ 0))))
+            (dy (* dist (pcase dir ('up -1) ('down 1) (_ 0)))))
+        (exwm-floating-move dx dy))
+    (funcall (intern (format "windmove-%s" dir)))))
+
+(defun qv/exwm-floating-center ()
+  (interactive)
+  (set-frame-width nil 960 nil t)
+  (set-frame-height nil 540 nil t)
+  (exwm-floating-move
+   (- 360 (car (frame-position)))
+   (- 220 (cdr (frame-position)))))
+
 ;;;; Resizing Windows
 (defun qv/window-resize (delta horizontal)
-  (let ((before-fixed window-size-fixed))
-    (setq-local window-size-fixed nil)
-    (window-resize (selected-window) delta horizontal)
-    (setq-local window-size-fixed before-fixed)))
+  (if exwm--floating-frame
+      (if horizontal
+          (set-frame-width nil (+ (frame-width) delta))
+        (set-frame-height nil (- (frame-height) delta)))
+    (let ((before-fixed window-size-fixed))
+      (setq-local window-size-fixed nil)
+      (window-resize (selected-window) delta horizontal)
+      (setq-local window-size-fixed before-fixed))))
 
 (qv/keys exwm
   "s-M-h" (qv/window-resize -4 t)
@@ -150,17 +164,17 @@
 
 ;;;; Splitting Windows
 (qv/keys exwm
-  "s-H" ( qv/split-window 'left)
-  "s-L" ( qv/split-window 'right)
-  "s-J" ( qv/split-window 'down)
-  "s-K" ( qv/split-window 'up))
+  "s-H" (qv/split-window 'left)
+  "s-L" (qv/split-window 'right)
+  "s-J" (qv/split-window 'down)
+  "s-K" (qv/split-window 'up))
 
-;; Neither function works on both operating systems
-;;;;; Works on debian
 (defun qv/split-window (direction)
-  (let ((window-size-fixed nil))
-    (select-window (split-window nil nil direction))
-    (switch-to-buffer "*scratch*")))
+  (if exwm--floating-frame
+      (qv/windmove direction 200)
+    (let ((window-size-fixed nil))
+      (select-window (split-window nil nil direction))
+      (switch-to-buffer "*scratch*"))))
 
 ;;; Configuration
 (exwm-enable)
@@ -237,7 +251,7 @@ If SINK is specified, use that as the output device instead of the active sink"
   "Change the system brightness by DELTA using xrandr. \
 If delta is a float, multiply the current brightness by delta instead. \
 If MONITOR is specified, change the brightness of it instead of eDP-1"
-  (setq qv/system-brightness (min 1.0 (max 0.01 (+ qv/system-brightness delta))))
+  (setq qv/system-brightness (min 1 (max 0.001 (+ qv/system-brightness delta))))
   (let ((xrandr-cmd
          (format "xrandr --output %s --brightness %s"
                  (or monitor "eDP-1") qv/system-brightness))
@@ -249,7 +263,9 @@ If MONITOR is specified, change the brightness of it instead of eDP-1"
 
 (qv/keys exwm
   "<XF86MonBrightnessUp>" (qv/change-brightness 0.01)
-  "<XF86MonBrightnessDown>" (qv/change-brightness -0.01))
+  "<XF86MonBrightnessDown>" (qv/change-brightness -0.01)
+  "<S-XF86MonBrightnessUp>" (qv/change-brightness 0.1)
+  "<S-XF86MonBrightnessDown>" (qv/change-brightness -0.1))
 
 ;;;; Xinput
 (setq qv/xinput-tapping-enabled 0)
@@ -314,11 +330,27 @@ for the device with id or name of DEVICE"
 ;;;; Hardware
 (qv/xinput-set-property 12 331 1)
 
-;;;; Screen Resolution
-(shell-command "xrandr -s 1920x1080")
-
 ;;; Miscellaneous
 ;;;; Browser
 ;; When opening a browser, do it in the browser activity
 (advice-add 'browse-url-default-browser :before
             (lambda (&rest args) (qv/switch-to-activity "browser")))
+
+;;;; Floating Setup
+;;(qv/hook exwm-floating-setup-hook qv/floating-setup
+;;  (set-frame-height nil 600 nil t)
+;;  (set-frame-width nil 1200 nil t)
+;;  (exwm-floating-move
+;;   (- 360 (car (frame-position)))
+;;   (- 220 (cdr (frame-position)))))
+
+;;;; New window hook
+
+(qv/hook exwm-manage-finish-hook qv/exwm-new-window-hook
+  (exwm-layout-hide-mode-line))
+
+;;;; Update Class Hook
+(qv/hook exwm-update-class-hook qv/exwm-update-class
+  (exwm-workspace-rename-buffer (concat ":" exwm-class-name ":"))
+  (pcase exwm-class-name
+    (".blueman-applet-wrapped" (kill-buffer nil))))

@@ -18,7 +18,7 @@
                   (split-string (shell-command-to-string
                                  "ls ~/.emacs.d/modules"))))))
   (let ((file (format "~/.emacs.d/modules/%s.el" module)))
-    (if-let ((time (benchmark-elapse (ignore-errors (load file)))))
+    (if-let ((time (benchmark-elapse (load file))))
         (progn (message "Module `%s` loaded in %s seconds" module time)
                (add-to-list 'qv/loaded-modules (intern (format "%s" module))))
       (message "Error loading `%s`" file))))
@@ -30,7 +30,7 @@
 
 (defmacro qv/require (module)
   `(unless (qv/required ,module)
-     (qv/load ',module)))
+     (ignore-errors (qv/load ',module))))
 
 (defmacro qv/after (package &optional module)
   `(eval-after-load ',package

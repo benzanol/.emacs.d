@@ -32,11 +32,12 @@
 ;;; Automatically move off of overlay
 ;; Redundant because of 'stay on same line' functions
 (defun qv/move-off-outline-overlay ()
-  (when outline-minor-mode
+  (interactive)
+  (when (or outline-minor-mode (eq major-mode 'org-mode))
     (when (or (outline-invisible-p)
               (save-excursion (goto-char (1- (point)))
                               (outline-invisible-p)))
       (beginning-of-visual-line)
       (end-of-line))))
 
-;;(add-hook 'post-command-hook 'qv/move-off-outline-overlay)
+(add-hook 'post-command-hook 'qv/move-off-outline-overlay)

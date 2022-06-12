@@ -4,15 +4,18 @@
 
 (setq echo-bar-function 'qv/echo-bar-function)
 (setq echo-bar-update-interval 1)
-(setq echo-bar-right-padding 8)
+(setq echo-bar-right-padding 4)
 (setq qv/echo-bar-height 1.2)
 
 (defun qv/colorize-echo-bar ()
   (dolist (buf '(" *Echo Area 0*" " *Echo Area 1*" " *Minibuf-0*" " *Minibuf-1*"))
-    (with-current-buffer buf
-      (buffer-face-set 'mode-line))))
+    (ignore-errors
+      (with-current-buffer buf
+        (buffer-face-set 'mode-line)))))
 
 (add-hook 'post-command-hook 'qv/colorize-echo-bar)
+
+(qv/face qv/icons :family "all-the-icons")
 
 (defun qv/echo-bar-function ()
   (propertize

@@ -19,4 +19,4 @@
   "C-c C-l" qv/toggle-latex
   "M-\\" ((insert "\\(  \\)") (backward-char 3)))
 
-(plist-put org-format-latex-options :scale 1.4)
+(plist-put org-format-latex-options :scale 2.0)

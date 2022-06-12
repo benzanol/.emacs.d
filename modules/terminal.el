@@ -4,7 +4,10 @@
 (defun terminal ()
   (interactive)
   (multi-term)
-  (qv/term-setup))
+  (qv/term-setup)
+  (let ((name (read-string "Name: ")))
+    (when (not (string= name ""))
+      (rename-buffer (format "*term %s*" name)))))
 
 (defun qv/term-setup ()
   (interactive)

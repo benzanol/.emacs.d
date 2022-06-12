@@ -119,6 +119,8 @@
   "<tab>" scala-indent:indent-line)
 
 (qv/hook scala-mode-hook qv/scala-setup
+  (outline-minor-mode 0)
+  (hs-minor-mode 1)
   (lsp-headerline-breadcrumb-mode 0)
   (yas-minor-mode 1)
   (run-with-timer 0.01 nil (lambda () (flycheck-mode 0)))

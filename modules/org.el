@@ -21,13 +21,13 @@
 (qv/face org-hide :h 0.1)
 
 (setq org-ellipsis " ➾")
-(setq org-startup-indented nil)
 (setq org-src-tab-acts-natively nil)
 (setq org-return-follows-link t)
 (setq org-hide-emphasis-markers t)
 (setq org-hide-leading-stars nil)
-(setq org-pretty-entities t)
+(setq org-pretty-entities nil)
 (setq org-adapt-indentation nil)
+(setq org-indirect-buffer-display 'current-window)
 
 ;;; Outline Faces
 (qv/face qv/org-text variable-pitch)
@@ -55,8 +55,10 @@
 (qv/face org-ellipsis :fg gray2 :u nil)
 
 ;;; Keybindings
+(setq-default qv/org-lang "emacs-lisp")
+(make-local-variable 'qv/org-lang)
 (qv/keys org-mode-map
-  "C-c C-b" (insert "#+BEGIN_SRC emacs-lisp\n#+END_SRC")
+  "C-c C-b" (insert (format "#+BEGIN_SRC %s\n#+END_SRC" qv/org-lang))
   "C-c C-c" org-ctrl-c-ctrl-c
   "C-c C-t" org-todo
   "{" org-move-item-up
@@ -204,7 +206,7 @@ other formatting."
   (visual-fill-column-mode 1)
   (visual-line-mode 1))
 
-(defvar qv/org-width 0.5)
+(defvar qv/org-width 0.8)
 (qv/hook window-state-change-hook qv/visual-column-update
   (walk-windows
    (lambda (win)
@@ -270,32 +272,6 @@ are visible (full height) or invisible (tiny height).")
     (3 '(:overline t :inherit qv/delimiter)))))
 
 
-
-(qv/keys *
-  "M-i" nil
-  "M-i M-h" org-insert-heading
-  "M-i M-l" org-insert-link
-  "M-i M-d" org-insert-drawer
-  "M-i M-m" ((setq org-pretty-entities (not org-hide-emphasis-markers)
-                   org-hide-emphasis-markers (not org-hide-emphasis-markers))
-             (org-mode-restart))
-  "M-i M-b" ((insert "#+BEGIN_SRC emacs-lisp\n\n#+END_SRC")
-             (previous-line))
-  "M-i e" ((insert (format "〈%s〉" (read-string "Equation: ")))
-           (qv/org-equation-overlays))
-  "M-i E" ((insert "〈〉") (backward-char)
-           (qv/org-equation-overlays))
-  "M-e" ((insert (format "〈%s〉" (read-string "Equation: ")))
-         (qv/org-equation-overlays))
-  "M-E" ((insert "〈〉") (backward-char)
-         (qv/org-equation-overlays))
-  "M-i g l" ((insert (format "⌈%s⌉" (read-string "Line: "))))
-  "M-i g L" ((insert "⌈⌉") (backward-char)))
-
-(dolist (i qv/insert-symbols-alist)
-  (global-set-key (kbd (concat "M-i " (car i)))
-                  (eval `(lambda () (interactive) (insert ,(cdr i))))))
-
 ;;; Org Appear
 (qv/package org-appear)
 (add-hook 'org-mode-hook 'org-appear-mode)
@@ -324,3 +300,19 @@ are visible (full height) or invisible (tiny height).")
 (qv/face org-headline-done :fg nil :u t :s italic)
 (qv/face org-checkbox-statistics-todo fixed-pitch :h 0.75 :w bold :fg gray2)
 (qv/face org-checkbox-statistics-done fixed-pitch :h 0.75 :w bold :fg "LawnGreen")
+
+;;; Org Indent Mode
+(setq org-startup-indented t)
+(setq org-indent-indentation-per-level 20)
+(setq org-indent-boundary-char ?|)
+(qv/face org-indent :fg bg :bg bg)
+(add-hook 'org-mode 'org-indent-mode)
+
+(qv/face qv/org-header qv/org-text :w bold :h 1.05, :u nil)
+(qv/face org-document-title qv/org-header :fg fg :h 1.7 :u nil :s italic)
+(qv/face org-document-info qv/org-header :fg fg :h 1.3 :u nil)
+(qv/face org-level-1 qv/org-header :u t)
+(qv/face org-level-2 qv/org-header :u t)
+(qv/face org-level-3 qv/org-header :u t)
+(qv/face org-level-4 qv/org-header :u t)
+

@@ -88,17 +88,15 @@
 
 ;;; Mappings
 (qv/keys dired-mode-map
-  "j" dired-next-line
-  "k" dired-previous-line
-  "J" qv/down4
-  "K" qv/up4
+  "H" nil "L" nil "J" nil "K" nil
+  "h" nil "l" nil "j" nil "k" nil
   "d" dired-do-delete
   "/" isearch-forward
   "?" isearch-backward
   "n" isearch-repeat-forward
   "N" isearch-repeat-backward
   "p" emms-play-dired
-  "g" nil)
+  "g" nil "v" nil "V" nil)
 
 (defun qv/dired-toggle-mark (&optional arg)
   "Toggle whether the current file is marked.
@@ -150,9 +148,9 @@
   (variable-pitch-mode 1)
   (qv/face dired-directory :fg blue)
   (qv/face dired-header dired-directory :h 1.1 :w bold :u t)
-  (qv/face dired-marked :fg yellow)
+  (qv/face dired-marked :fg yellow :w normal :s italic)
   (qv/face dired-mark dired-marked)
-  (qv/face dired-symlink :fg purple)
+  (qv/face dired-symlink :fg orange :w normal :s italic)
   (dotimes (i 5)
     (qv/face ,(intern (format "dired-subtree-depth-%s-face" (1+ i))) :bg nil))
 

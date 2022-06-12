@@ -3,7 +3,9 @@
 ;; Only enable in buffers associated with a file
 (qv/hook buffer-list-update-hook qv/undo-tree-mode
   (with-current-buffer (car (buffer-list))
-    (when (and (buffer-file-name) (not undo-tree-mode))
+    (when (and (buffer-file-name)
+               (or (not (boundp 'undo-tree-mode))
+                   (not undo-tree-mode)))
       (undo-tree-mode 1))))
 
 (setq undo-tree-history-directory-alist '(("." . "~/.emacs.d/undo-history"))
