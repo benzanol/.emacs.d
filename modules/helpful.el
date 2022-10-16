@@ -36,7 +36,7 @@
                  (end (search-forward-regexp "^Symbol Properties$\\|\\'" nil t)))
         (forward-line -1)
         (add-face-text-property beg (1- (point)) 'fixed-pitch t)
-        (lisp-indent-region beg (1- (point))))
+        (ignore-errors (lisp-indent-region beg (1- (point)))))
 
       (when (search-forward-regexp "^Symbol Properties\n" nil t)
         (add-face-text-property (point) (point-max) 'fixed-pitch t)))))

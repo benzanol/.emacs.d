@@ -6,13 +6,18 @@
   (setq clr-term-process
         (get-buffer-process (current-buffer))))
 
+(defvar clr-use-geiser nil)
+
 (defun clr-send-string (str)
   ;; Remove newlines from beginning and end of str
   (setq str (replace-regexp-in-string "\\`\n+" "" str))
   (setq str (replace-regexp-in-string "\n+\\'" "" str))
 
   ;; Put in brackets if multiple lines, then add newline to the end
-  (term-send-string clr-term-process (concat str "\n")))
+  (if clr-use-geiser
+      (with-current-buffer (process-buffer clr-term-process)
+        (geiser-repl--send str))
+    (term-send-string clr-term-process (concat str "\n"))))
 
 (defun org-babel-execute:clisp (body params)
   (clr-send-string body)
@@ -44,7 +49,7 @@
     (end-of-line)
     (search-backward-regexp "^[^\t\n ]")
     (clr-send-region (point) (progn (forward-sexp) (point)))))
-    
+
 
 (defvar clr-default-buffers nil
   "Buffers to send to clronite.")

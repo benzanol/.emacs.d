@@ -1,8 +1,12 @@
 (qv/package outline)
 
+(qv/hook outline-minor-mode-hook qv/hs-disable
+  (when outline-minor-mode (hs-minor-mode 0)))
+
 ;;; Outline keybindings
 (qv/keys outline-minor-mode-map
   :sparse t
+  :keymode normal
   32 outline-toggle-children
   "g z r" outline-show-all
   "g z j" outline-next-heading

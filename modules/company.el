@@ -47,10 +47,16 @@
   "M-J" (dotimes (i 4) (company-select-next))
   "M-K" (dotimes (i 4) (company-select-previous)))
 
+(qv/keys company-mode-map
+  :sparse t
+  "<C-tab>" company-complete)
+
+;; Bind Alt+n to the nth completion
 (dotimes (i 10)
   (define-key company-active-map (kbd (format "M-%s" (% (1+ i) 10)))
     (eval `(lambda () (interactive) (company--complete-nth ,i)))))
 
+;; Company posframe
 (when (display-graphic-p)
   (qv/package company-posframe)
   (company-posframe-mode 1)
@@ -79,3 +85,8 @@
           (cons (car pos)
                 (if (< (+ (cdr pos) (* 2 h)) (frame-pixel-height)) (+ (cdr pos) h)
                   (- (cdr pos) (frame-pixel-height posframe--frame) 40))))))))
+
+;; Disable yasnippets
+(qv/hook company-after-completion-hook qv/kill-yasnippet
+  (when mark-active (delete-region (point) (mark)))
+  (ignore-errors (yas/exit-all-snippets)))

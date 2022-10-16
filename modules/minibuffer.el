@@ -37,7 +37,7 @@
       (delete-backward-char 1)
     (let ((pos (point)))
       (backward-char 1)
-      (or (and (search-backward "/" nil t) (forward-char 1))
+      (or (and (search-backward "/" nil t) (prog1 t (forward-char 1)))
           (beginning-of-line))
       (delete-region (point) pos))))
 
@@ -94,7 +94,7 @@
 
 ;;; Orderless
 (qv/package orderless)
-(setq completion-styles '(orderless))
+(setq completion-styles '(orderless initials))
 ;;(setq completion-styles '(basic partial-completion emacs22 substring initials))
 
 ;;; Marginalia

@@ -19,6 +19,4 @@
 (qv/keys qvk-visual-map
   "A" mc/edit-lines
   "C-n" mc/mark-next-like-this
-  "C-S-n" mc/mark-all-like-this)
-
-(qv/key * "C-m" ,mc/keymap)
+  "C-a" mc/mark-all-like-this)

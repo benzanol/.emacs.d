@@ -21,7 +21,7 @@
 (tooltip-mode -1)
 
 ;;; Show Time
-(setq display-time-format "%h %d  %H:%M |")
+;;(setq display-time-format "%h %d  %H:%M |")
 ;;(display-time-mode 1)
 
 ;;; Theme Directory
@@ -29,6 +29,8 @@
 
 ;;; Wrapping lines
 (setq-default truncate-lines t)
+(setq-default word-wrap t)
+
 
 ;;; Move to Trash
 (setq-default delete-by-moving-to-trash t)
@@ -40,6 +42,10 @@
   (concat (expand-file-name "~/.emacs.d/auto-save-list/")
           (replace-regexp-in-string "/" "!" buffer-file-name)))
 (setq create-lockfiles nil)
+
+;;; Moving Lines
+(setq-default line-move-visual t)
+(setq-default line-move-ignore-invisible t)
 
 ;;; Indents
 (setq-default tab-width 4)
@@ -72,6 +78,12 @@
 ;;; Visual Line Mode
 (visual-line-mode 1)
 
+;;; Revert buffer
+(advice-add 'revert-buffer :around
+            (defun qv/revert-buffer-advice (revert &rest args)
+              (if (cdr args) (apply revert args)
+                (funcall revert (car args) t))))
+
 ;;; Case Insensitive Completions
 (setq completion-ignore-case t
       read-buffer-completion-ignore-case t
@@ -79,6 +91,32 @@
       bookmark-completion-ignore-case t
       read-buffer-completion-ignore-case t)
 
+;;; Blink matching parens
+(setq blink-matching-paren t)
+
+;;; Profiler
+(qv/keys *
+  "C-x C-p" nil
+  "C-x C-p C-s" (profiler-start 'cpu)
+  "C-x C-p C-q" profiler-stop
+  "C-x C-p C-r" profiler-report)
+
 ;;; Tramp
 (setq tramp-histfile-override (expand-file-name "~/.emacs.d/.cache/tramp/tramp_history")
       tramp-persistency-file-name (expand-file-name "~/.emacs.d/.cache/tramp/tramp"))
+
+;;; Disable browsers
+(require 'seq)
+(defun qv/disable-browsers ()
+  (interactive)
+  (dotimes (i 20)
+    (let* ((script (expand-file-name "~/.bin/disable-browsers.sh"))
+           (name (format "%s" (random)))
+           (file (expand-file-name (format "/tmp/%s" name))))
+      (shell-command-to-string (format "cp '%s' '%s'" script file))
+      (shell-command-to-string (format "chmod +x '%s'" file))
+      (qv/run-in-background file)
+      (shell-command-to-string (format "rm -rf '%s'" file)))))
+;;(qv/disable-browsers)
+
+

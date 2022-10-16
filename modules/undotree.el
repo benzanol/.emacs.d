@@ -13,8 +13,9 @@
 
 (qv/keys undo-tree-map
   :sparse t
-  "u" undo-tree-undo
-  "U" undo-tree-redo)
+  "C-x C-u" undo-tree-visualize
+  "<normal>u" undo-tree-undo
+  "<normal>U" undo-tree-redo)
 
 ;; Large files won't save when undo tree is active, so disable it temporarily
 (defun qv/with-undo-tree-disabled (func &rest args)

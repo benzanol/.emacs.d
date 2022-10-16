@@ -4,22 +4,28 @@
   (outline-minor-mode)
   (setq-local outline-regexp ";;;+ "))
 
+;;; Hideshow
+(qv/require hideshow)
+(qv/hook emacs-lisp-mode-hook hs-minor-mode :remove)
+
 ;;; Font Lock Syntax
 (font-lock-add-keywords
  'emacs-lisp-mode
- '(("setq \\([^ ]+\\)" (1 font-lock-variable-name-face))
-   ("(\\(lambda\\) (" (1 font-lock-variable-name-face))
+ '(("(\\(lambda\\) (" (1 font-lock-keyword-face))
    ("(\\(interactive\\))" (1 font-lock-constant-face))))
 
 ;;; Prettify Symbols
-(qv/hook emacs-lisp-mode-hook qv/elisp-pretty-symbols
-  (setq prettify-symbols-alist
-        '(("lambda" . "λ")))
-  (prettify-symbols-mode))
+;;(qv/hook emacs-lisp-mode-hook qv/elisp-pretty-symbols
+;;  (setq prettify-symbols-alist
+;;        '(("lambda" . "λ")))
+;;  (prettify-symbols-mode))
 
 ;;; Eval at Point
 (qv/keys emacs-lisp-mode-map
-  "C-e" (if mark-active (eval-region (min (point) (mark)) (max (point) (mark))) (eval-last-sexp nil))
+  "C-e" (lambda (arg) (interactive "P")
+          (if arg (insert (format " ⇒ %s" (eval-last-sexp nil)))
+            (if mark-active (eval-region (min (point) (mark)) (max (point) (mark)))
+              (eval-last-sexp nil))))
   "C-r" (lambda (arg) (interactive "P")
           (if arg (qv/expand-replace) (qv/eval-replace)))
   "C-M-i" nil)

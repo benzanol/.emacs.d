@@ -1,5 +1,10 @@
 ;;; Caps Lock as Control
-(shell-command "xmodmap ~/.Xmodmap")
+(shell-command
+ (format
+  "xmodmap <( echo \"%s\n%s\n%s\" )"
+  "remove Lock = Caps_Lock"
+  "keycode 0x42 = Control_L"
+  "add Control = Control_L"))
 
 ;;; Key Repeat
 (shell-command "xset r rate 250 20")

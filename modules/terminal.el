@@ -1,6 +1,8 @@
 (qv/package term)
 (qv/package multi-term)
 
+(qv/key * "C-x C-t" terminal)
+
 (defun terminal ()
   (interactive)
   (multi-term)

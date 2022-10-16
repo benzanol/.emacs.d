@@ -15,10 +15,8 @@
    ("\\(^\n\\)" (1 '(:height 0.5)))
    ;; Make indentation noticable
    ("^\\( +\\)" (1 'fixed-pitch))
-   ;; Hide leading stars
-   ("^\\*+ " (0 'org-hide))))
-
-(qv/face org-hide :h 0.1)
+   ("^\\(\\**\\)\\(\\* \\)\\([^:\n]*[^ \n]:\\) "
+    (3 'qv/org-small-header))))
 
 (setq org-ellipsis " ➾")
 (setq org-src-tab-acts-natively nil)
@@ -31,16 +29,22 @@
 
 ;;; Outline Faces
 (qv/face qv/org-text variable-pitch)
-(qv/face qv/org-header qv/org-text :w medium :h 1.0)
-(qv/face org-document-title qv/org-header :fg fg :h 2.2 :u nil :s italic)
-(qv/face org-document-info qv/org-header :fg fg :h 1.25)
-(qv/face org-level-1 qv/org-header :h 1.7 :w bold :u nil)
-(qv/face org-level-2 qv/org-header :h 1.3 :w bold :s normal :u nil)
-(qv/face org-level-3 qv/org-header :h 1.05 :w bold :u t)
-(qv/face org-level-4 qv/org-header :h 1.0 :u t :s italic)
+
+(qv/face qv/org-header qv/org-text :h 1.0 :w bold :u nil)
+(qv/face qv/org-small-header qv/org-text :h 1.0 :w bold :u t)
+
+(qv/face org-document-title qv/org-header :fg fg :h 1.7 :u nil :s italic)
+(qv/face org-document-info qv/org-header :fg fg :h 1.3 :u nil)
+
+(qv/face org-level-1 qv/org-header :u t)
+(qv/face org-level-2 qv/org-header :u t)
+(qv/face org-level-3 qv/org-header :u t)
+(qv/face org-level-4 qv/org-header :u t)
+(qv/face org-level-5 qv/org-header :u t)
 
 ;;; Special Faces
-(qv/face org-special-keyword nil :fg nil :w bold)
+(qv/face org-hide :h 1.0 :fg bg)
+(qv/face org-special-keyword fixed-pitch :fg gray2 :w bold)
 (qv/face org-meta-line fixed-pitch :fg gray2 :h 0.8)
 (qv/face org-document-info-keyword fixed-pitch :fg gray2 :h 0.8)
 (qv/face org-drawer org-meta-line :fg nil)
@@ -58,15 +62,39 @@
 (setq-default qv/org-lang "emacs-lisp")
 (make-local-variable 'qv/org-lang)
 (qv/keys org-mode-map
-  "C-c C-b" (insert (format "#+BEGIN_SRC %s\n#+END_SRC" qv/org-lang))
+  :sparse t
   "C-c C-c" org-ctrl-c-ctrl-c
-  "C-c C-t" org-todo
-  "{" org-move-item-up
-  "}" org-move-item-down
-  "RET" (if insert-keymode (newline) (org-open-at-point))
-  "SPC" outline-toggle-children
-  "<backtab>" org-global-cycle
-  "g =" qv/format-code-block-indentation)
+  "C-t" org-todo
+
+  "<normal> SPC" outline-toggle-children
+  "<normal> S-SPC" org-cycle
+  "<normal> <backtab>" org-global-cycle
+
+  "<normal> RET" org-open-at-point
+  "<insert> RET" (newline) ;; Prevent indentation
+
+  "C-k" org-move-item-up
+  "C-j" org-move-item-down
+
+  "M-a" org-do-promote
+  "M-d" org-do-demote
+  "C-c C-h" ((org-toggle-heading) (qv/org-update-header-overlay))
+  "C-o" org-insert-heading-after-current
+  "C-p" ((org-insert-heading-after-current) (org-do-demote))
+
+  "C-a" nil
+  "C-a C-l" org-insert-link
+
+  "C-c C-b" (insert (format "#+BEGIN_SRC %s\n#+END_SRC" qv/org-lang))
+  "<normal> g =" qv/format-code-block-indentation
+
+  "C-<" ((setq visual-fill-column-width
+               (max 10 (- visual-fill-column-width 5)))
+         (visual-fill-column-adjust))
+  "C->" ((setq visual-fill-column-width (+ visual-fill-column-width 5))
+         (visual-fill-column-adjust))
+  "C-c C-\\" ((setq visual-fill-column-center-text (not visual-fill-column-center-text))
+             (visual-fill-column-adjust)))
 
 ;;; Hiding Text
 (defvar qv/org-showing-meta-text nil
@@ -198,23 +226,17 @@ other formatting."
     (goto-char original-position)))
 
 ;;; Visual Fill Column
+
 (qv/package visual-fill-column)
 
 (qv/hook org-mode-hook qv/visual-fill-column-setup
-  (setq visual-fill-column-width 30)
-  (setq visual-fill-column-center-text t)
+  (setq visual-fill-column-width 100)
+  (setq visual-fill-column-center-text nil)
+  (setq truncate-lines t)
+  (setq word-wrap t)
   (visual-fill-column-mode 1)
   (visual-line-mode 1))
 
-(defvar qv/org-width 0.8)
-(qv/hook window-state-change-hook qv/visual-column-update
-  (walk-windows
-   (lambda (win)
-     (with-selected-window win
-       (when visual-fill-column-mode
-         (let ((win (window-total-width)))
-           (setq visual-fill-column-width
-                 (min (round (* qv/org-width win)) (- win 8) 100))))))))
 
 ;;; Inserting Items
 (setq qv/insert-symbols-alist
@@ -276,7 +298,7 @@ are visible (full height) or invisible (tiny height).")
 (qv/package org-appear)
 (add-hook 'org-mode-hook 'org-appear-mode)
 (setq org-appear-autosubmarkers t)
-(setq org-appear-autolinks t)
+(setq org-appear-autolinks nil)
 (setq org-appear-autoentities t)
 
 ;;; Pretty Symbols
@@ -301,18 +323,143 @@ are visible (full height) or invisible (tiny height).")
 (qv/face org-checkbox-statistics-todo fixed-pitch :h 0.75 :w bold :fg gray2)
 (qv/face org-checkbox-statistics-done fixed-pitch :h 0.75 :w bold :fg "LawnGreen")
 
-;;; Org Indent Mode
-(setq org-startup-indented t)
-(setq org-indent-indentation-per-level 20)
-(setq org-indent-boundary-char ?|)
-(qv/face org-indent :fg bg :bg bg)
-(add-hook 'org-mode 'org-indent-mode)
+;;; Hide ALL Leading Stars
 
-(qv/face qv/org-header qv/org-text :w bold :h 1.05, :u nil)
-(qv/face org-document-title qv/org-header :fg fg :h 1.7 :u nil :s italic)
-(qv/face org-document-info qv/org-header :fg fg :h 1.3 :u nil)
-(qv/face org-level-1 qv/org-header :u t)
-(qv/face org-level-2 qv/org-header :u t)
-(qv/face org-level-3 qv/org-header :u t)
-(qv/face org-level-4 qv/org-header :u t)
+;; Made redundant by overlays in org indent mode
+
+;;(setq org-hide-leading-stars nil
+;;      org-hide-all-leading-stars t)
+;;
+;;(advice-add
+;; 'org-get-level-face :filter-args
+;; (lambda (args)
+;;   (if (and (eq (car args) 2) org-hide-all-leading-stars)
+;;       (list 1) args)))
+;;
+;;;;; Hide property drawers
+;;(qv/hook org-mode-hook qv/org-hide-all-drawers
+;;  (save-excursion
+;;    (while (search-forward-regexp "^:END:$" nil t)
+;;      (when (not (overlays-at (1- (point))))
+;;        (org-hide-drawer-toggle)))))
+;;(advice-add 'org-global-cycle :after 'qv/org-hide-all-drawers)
+;;
+;;(defun qv/org-hide-next-drawer ()
+;;  (save-excursion
+;;    (when (and (search-forward ":PROPERTIES:" (line-end-position 2) t)
+;;               (not (overlays-at (point))))
+;;      (org-hide-drawer-toggle))))
+;;(advice-add 'outline-toggle-children :after 'qv/org-hide-next-drawer)
+
+
+;;; Org Indent Mode
+
+;;(setq org-startup-indented nil)
+(add-hook 'org-mode-hook 'org-indent-mode)
+(setq org-indent-mode-turns-on-hiding-stars nil)
+
+(defun qv/org-indent-refresh ()
+  (interactive)
+  (org-indent-mode 1))
+
+;;;; Add an overlay to the header stars
+(qv/hook outline-view-change-hook qv/org-header-overlay-timer
+  (run-with-timer 0 nil 'qv/org-update-header-overlay))
+
+(defun qv/org-update-header-overlay (&rest args)
+  (save-excursion
+    ;; Go to the previous heading when called with hook, but not from org indent mode
+    (unless args (forward-line 1) (outline-previous-visible-heading 1))
+
+    (remove-overlays (line-beginning-position) (line-end-position) 'hide-stars t)
+    (beginning-of-line)
+    (when (and (not (looking-at "\\*+ *$"))
+               (search-forward-regexp org-heading-regexp (line-end-position) t))
+      (let ((o (make-overlay (match-beginning 1) (1+ (match-end 1)) nil t nil)))
+        (overlay-put o 'hide-stars t)
+        (overlay-put o 'invisible t)
+        (overlay-put o 'intangible t)
+        (overlay-put o 'modification-hooks
+                     '((lambda (ov &rest args) (delete-overlay ov))))
+
+        (overlay-put
+         o 'after-string
+         (propertize
+          (concat
+           (if (let ((cur (org-current-level)))
+                 (save-excursion
+                   (or (= 1 (forward-line 1))
+                       (and (looking-at org-heading-regexp)
+                            (<= (org-current-level) cur)))))
+               #("⦿ " 0 1 (display ((height 0.7) (raise 0.15))))
+             (if (outline-invisible-p (line-end-position))
+                 #("› " 1 2 (display (height 1.3)))
+               (propertize "ˬ" 'face '(:weight bold) 'display '((raise 0.3)))))
+           (propertize " " 'display '(raise 0.3)))
+          'face '(:inherit qv/org-header :underline nil)))))))
+
+;;;; Indent contents of headings
+(advice-add 'org-indent-set-line-properties :override 'qv/oislp-override)
+(defun qv/oislp-override (level indentation &optional heading)
+  (qv/org-update-header-overlay 'dont-go-back)
+  (when (not heading) ; When it isn't a heading
+    (if (save-excursion ; If inside of a drawer, indent doubly
+          (let* ((p (line-end-position))
+                 (s (search-backward-regexp org-drawer-regexp nil t))
+                 (e (search-forward-regexp org-property-end-re nil t))
+                 (h (search-backward-regexp org-heading-regexp s t)))
+            (and s e (not h) (> e p))))
+        (setq level (+ 2 level))
+      (setq level (+ 1 level))))
+
+  (let* ((line (aref org-indent--text-line-prefixes level)))
+    (add-text-properties (line-beginning-position) (line-beginning-position 2)
+			             `(line-prefix ,line wrap-prefix ,line)))
+  (forward-line))
+
+;;;; Add indent guides
+(cond ((display-graphic-p)
+       (setq qv/org-indent-margin 15)
+       (setq qv/org-indent-width 25)
+       (setq qv/org-indent-before 2)
+       (setq qv/org-indent-guide-char ?\s)
+       (qv/face qv/org-indent-guide :bg gray3 :h 0.4))
+      (t
+       (setq qv/org-indent-margin 0)
+       (setq qv/org-indent-width 3)
+       (setq qv/org-indent-before 0)
+       (setq qv/org-indent-guide-char ?\s)
+       (qv/face qv/org-indent-guide :fg gray2 :h 1.0)))
+
+(defun qv/org-indent-guide-string (level)
+  (let ((align (round (+ qv/org-indent-margin (* qv/org-indent-width (1- level))))))
+    (if (= level 1)
+        (propertize " " 'display `(space :align-to (,align)))
+      (concat (propertize " " 'display `(space :width (,qv/org-indent-before)))
+              (propertize (string qv/org-indent-guide-char) 'face 'qv/org-indent-guide)
+              (propertize " " 'display `(space :align-to (,align)))))))
+
+
+(advice-add 'org-indent--compute-prefixes :override
+            'qv/org-indent-guide--compute-prefixes)
+
+(defun qv/org-indent-guide--compute-prefixes ()
+  (let ((prefixes (make-vector org-indent--deepest-level nil)))
+    (dotimes (i org-indent--deepest-level)
+      (aset prefixes i
+            (if (= i 0) ""
+              (concat (aref prefixes (1- i))
+                      (qv/org-indent-guide-string i)))))
+
+    (setq org-indent--heading-line-prefixes prefixes)
+    (setq org-indent--inlinetask-line-prefixes prefixes)
+    (setq org-indent--text-line-prefixes prefixes)
+    nil))
+
+(defun org-indent-set-line-properties (level indentation &optional heading)
+  (let* ((line (aref org-indent--text-line-prefixes level)))
+    ;; Add properties down to the next line to indent empty lines.
+    (add-text-properties (line-beginning-position) (line-beginning-position 2)
+			             `(line-prefix ,line wrap-prefix ,line)))
+  (forward-line))
 

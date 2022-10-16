@@ -17,7 +17,8 @@ specific motion keys for this operator only."
            (unless mark-active (activate-mark)))
 
          ;; Execute operator specific commands
-         ,@cmds))))
+         (unwind-protect (progn ,@cmds)
+           (when mark-active (deactivate-mark)))))))
 
 ;;;; Motions
 (qv/keys qvk-motion-map
@@ -34,14 +35,14 @@ specific motion keys for this operator only."
 
 (defun qvk-read-motion (&rest custom)
   (qvk-remember :motion
-    (let ((cmap (make-sparse-keymap)))
-      (while (cdr custom)
-        (define-key cmap (kbd (pop custom)) (pop custom)))
-      (setq minor-mode-map-alist
-            `((t . ,cmap) (t . ,qvk-motion-map)
-              . ,minor-mode-map-alist))
-      (unwind-protect (key-binding (read-key-sequence ""))
-        (setq minor-mode-map-alist (cddr minor-mode-map-alist))))))
+                (let ((cmap (make-sparse-keymap)))
+                  (while (cdr custom)
+                    (define-key cmap (kbd (pop custom)) (pop custom)))
+                  (setq minor-mode-map-alist
+                        `((t . ,cmap) (t . ,qvk-motion-map)
+                          . ,minor-mode-map-alist))
+                  (unwind-protect (key-binding (read-key-sequence ""))
+                    (setq minor-mode-map-alist (cddr minor-mode-map-alist))))))
 
 ;;;; Defining Keymodes
 (defvar qvk-keymodes nil
@@ -110,7 +111,8 @@ to a key sequence."
   "x" end-of-line
   "z" beginning-of-line
   "a l" qvk-around-line
-  "i l" qvk-inside-line)
+  "i l" qvk-inside-line
+  :sparse t)
 
 ;;;; Action Map
 (qv/keys qvk-action-map
@@ -130,6 +132,8 @@ to a key sequence."
   "M-[" ((insert "[]") (backward-char))
   "M-'" ((insert "''") (backward-char))
   "M-\"" ((insert "\"\"") (backward-char))
+  "M-*" ((insert "**") (backward-char))
+  "M-/" ((insert "//") (backward-char))
   "S-SPC" (insert " ")
   "M-q" qvk-normal-mode
   "RET" newline)
@@ -236,10 +240,10 @@ to a key sequence."
 
 ;;;; Keymodes
 (qvk-defkeymode qvk-insert-mode
-  qvk-insert-map qvk-M-normal-map)
+    qvk-insert-map qvk-M-normal-map)
 
 (qvk-defkeymode qvk-normal-mode
-  qvk-M-action-map)
+    qvk-M-action-map)
 
 (use-global-map (list 'keymap qvk-normal-map (current-global-map)))
 
@@ -312,10 +316,10 @@ to a key sequence."
 ;;;; Searching
 (defun qvk-search (&optional back regexp)
   (let ((str (qvk-remember :search
-               (read-string
-                (format "%sSearch%s: "
-                        (if regexp "Regexp " "")
-                        (if back " Backward" "")))))
+                           (read-string
+                            (format "%sSearch%s: "
+                                    (if regexp "Regexp " "")
+                                    (if back " Backward" "")))))
         (func (intern (format "nonincremental-%ssearch-%sward"
                               (if regexp "re-" "") (if back "back" "for"))))
         (p (point)))
@@ -387,8 +391,8 @@ to a key sequence."
   (let ((pos (point))
         (line-beg (line-beginning-position))
         (line-end (line-end-position)))
-    (apply func args)
-    (goto-char (max line-beg (min line-end (point))))))
+    (unwind-protect (apply func args)
+      (goto-char (max line-beg (min line-end (point)))))))
 
 (advice-add 'forward-char :around 'qvk-stay-on-line-advice)
 (advice-add 'backward-char :around 'qvk-stay-on-line-advice)

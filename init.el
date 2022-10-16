@@ -5,12 +5,14 @@
 (qv/require faces)
 (qv/require settings)
 (qv/require elisp)
-(qv/require keybindings)
+(qv/require keybindings2)
+(qv/require multicursors2)
 (qv/require minibuffer)
 (qv/require recenter)
+(qv/require terminal)
 (qv/require undotree)
 (qv/require helpful)
-(qv/require multicursors)
+(qv/require rearranging)
 
 (qv/package doom-modeline)
 (doom-modeline-mode)
@@ -44,6 +46,7 @@
 (qv/after rect rectangle)
 (qv/after prog-mode programming)
 (qv/after prog-mode outline)
+(qv/after scala-mode scala)
 
 (setq end (current-time))
 (message "Loaded in %s Seconds"

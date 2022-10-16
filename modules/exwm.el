@@ -151,16 +151,19 @@
       (window-resize (selected-window) delta horizontal)
       (setq-local window-size-fixed before-fixed))))
 
-(qv/keys exwm
-  "s-M-h" (qv/window-resize -4 t)
-  "s-M-l" (qv/window-resize +4 t)
-  "s-M-j" (qv/window-resize -1 nil)
-  "s-M-k" (qv/window-resize +1 nil)
+(defun qv/resize-keybindings ()
+  (interactive)
+  (qv/keys exwm
+    "s-M-h" (qv/window-resize -4 t)
+    "s-M-l" (qv/window-resize +4 t)
+    "s-M-j" (qv/window-resize -1 nil)
+    "s-M-k" (qv/window-resize +1 nil)
 
-  "s-M-H" (qv/window-resize -16 t)
-  "s-M-L" (qv/window-resize +16 t)
-  "s-M-J" (qv/window-resize -5 nil)
-  "s-M-K" (qv/window-resize +5 nil))
+    "s-M-H" (qv/window-resize -16 t)
+    "s-M-L" (qv/window-resize +16 t)
+    "s-M-J" (qv/window-resize -5 nil)
+    "s-M-K" (qv/window-resize +5 nil)))
+(qv/resize-keybindings)
 
 ;;;; Splitting Windows
 (qv/keys exwm
@@ -172,9 +175,10 @@
 (defun qv/split-window (direction)
   (if exwm--floating-frame
       (qv/windmove direction 200)
-    (let ((window-size-fixed nil))
+    (let ((window-size-fixed nil)
+          (scratch (memq major-mode '(exwm-mode term-mode))))
       (select-window (split-window nil nil direction))
-      (switch-to-buffer "*scratch*"))))
+      (when scratch (switch-to-buffer "*scratch*")))))
 
 ;;; Configuration
 (exwm-enable)
@@ -195,7 +199,7 @@
    (concat "feh --bg-scale "
            (expand-file-name "~/Media/Wallpaper/")
            wallpaper)))
-(qv/set-wallpaper "RedNebulaWallpaper.jpeg")
+(qv/set-wallpaper "Icetwigs.jpg")
 
 ;;;; Audio Settings
 (defun qv/current-pulseaudio-sink ()
@@ -333,8 +337,16 @@ for the device with id or name of DEVICE"
 ;;; Miscellaneous
 ;;;; Browser
 ;; When opening a browser, do it in the browser activity
-(advice-add 'browse-url-default-browser :before
-            (lambda (&rest args) (qv/switch-to-activity "browser")))
+(qv/require eww)
+(setq qv/eww-default-browser t)
+
+(advice-add 'browse-url-default-browser :around 'qv/browse-url-advice)
+(defun qv/browse-url-advice (func &rest args)
+  (qv/switch-to-activity "browser")
+  (if qv/eww-default-browser
+      (eww (car args) '(4))
+    (start-process-shell-command
+     "Brave" nil (format "brave '%s'" (car args)))))
 
 ;;;; Floating Setup
 ;;(qv/hook exwm-floating-setup-hook qv/floating-setup
@@ -346,8 +358,8 @@ for the device with id or name of DEVICE"
 
 ;;;; New window hook
 
-(qv/hook exwm-manage-finish-hook qv/exwm-new-window-hook
-  (exwm-layout-hide-mode-line))
+(qv/hook exwm-manage-finish-hook qv/exwm-new-window-hook :remove
+         (exwm-layout-hide-mode-line))
 
 ;;;; Update Class Hook
 (qv/hook exwm-update-class-hook qv/exwm-update-class

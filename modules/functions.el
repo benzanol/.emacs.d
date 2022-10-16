@@ -1,5 +1,11 @@
 (qv/package dash)
 
+;;; Wait
+(defmacro async (&rest args)
+  (let ((time 0))
+    (when (numberp (car args)) (setq time (car args) args (cdr args)))
+    `(run-with-timer ,time nil (lambda () . ,args))))
+
 ;;; Modify in place
 (defmacro : (var func &rest args)
   `(setf ,var (,func ,var . ,args)))
@@ -8,14 +14,35 @@
 (defun != (arg1 &rest args)
   (not (apply 'eq arg1 args)))
 
+;;; Vector to list
+(defun vector->list (vector)
+  (let (list)
+    (dotimes (i (length vector))
+      (push (aref vector i) list))
+    (reverse list)))
+
 ;;; Amazing Loop
 (defmacro for (vars iter &rest exprs)
-  (let ((count 0) params var-split var-order var-exprs)
+  "A special macro for looping.
+
+vars ::= var | (var1 var2 ...)
+var ::= element | element:index
+iter ::= end | (start end) | (start end inc) | list
+start, end, inc ::= integer
+
+exprs can start with a plist, containing the following properties:
+:beg - Skip the first N elements of the sequence.
+:end - Only go up to 
+"
+
+  (let ((var-ct (if (listp vars) (length vars) 1))
+        (count 0) params var-split var-order var-exprs)
+
     ;; Parse the beginning of `exprs` as a plist into params
     (while (and (keywordp (car exprs)) (>= (length exprs) 2))
       (setq params (cons (pop exprs) (cons (pop exprs) params))))
 
-    ;; If iter is a list of numbers, evaluate it as a number sequence
+    ;; If iter is a list of numbers, make it a number sequence
     (when (and (listp iter) (numberp (car iter)))
       (push 'number-sequence iter))
 
@@ -31,25 +58,28 @@
 
     ;; Create the literal let forms
     (setq var-exprs
-          (--map (if (caddr it) `(,(car it) (+ =index= ,(cadr it)))
-                   (if (>= (cadr it) 0) `(,(car it) (elt =iter= (+ =index= ,(cadr it))))
-                     `(,(car it) (elt (cons nil =iter=) (+ 1 =index= ,(cadr it))))))
+          (--map (if (caddr it) ; If it is an index variable
+                     `(,(car it) (+ =index= ,(cadr it)))
+                   (if (>= (cadr it) 0) ; If it is being incremented
+                       `(,(car it) (ignore-errors (elt =iter= (+ =index= ,(cadr it)))))
+                     `(,(car it) (ignore-errors (elt (cons nil =iter=) (+ 1 =index= ,(cadr it)))))))
                  var-order))
 
     `(let* ((=params= ',params)
             (=iter= (--> ,iter (if (numberp it) (number-sequence 0 (1- it)) it)))
-            (=index= (or (plist-get =params= :beg) 0))
-            (=inc= (or (plist-get =params= :inc) 1))
-            (=end= (--> (plist-get =params= :reps)
-                        (if (null it) (length =iter=)
-                          (if (> it 0) (* =inc= it)
-                            (+ (* =inc= it) (length =iter=))))))
+            (=index= (or ,(plist-get params :beg) 0))
+            (=inc= (or ,(plist-get params :inc) ,var-ct))
+            (=end= (or (--> ,(plist-get params :end)
+                            (and it (+ it (if (>= it 0) 0 (length =iter=)))))
+                       (--> ,(plist-get params :reps)
+                            (and it (+ =index= (* it =inc=))))
+                       (length =iter=)))
             (=continue= t)
-            (=out= (plist-get =params= :out)))
+            (=out= nil))
 
        (while (< =index= =end=)
          (let ,(reverse var-exprs)
-           ,@exprs
+           (push (progn ,@exprs) =out=)
            (setq =index= (+ =index= =inc=))))
 
        ;; Convert iter to a number sequence if necessary
@@ -234,3 +264,33 @@
     (start-process-shell-command
      (car app) (format " <<%s>>" (car app))
      (cdr app))))
+;;; Copy to clipboard
+(defun qv/copy (text)
+  (with-temp-buffer
+    (insert (format "%s" text))
+    (kill-region (point-min) (point-max))))
+;;; Grep Directory
+;;; Search in Directory
+(defun qv/grep (file)
+  (interactive "GSearch location: ")
+
+  (let ((qv/vertico-dont-format-candidates t))
+
+    (if (file-directory-p file)
+        (consult-grep file)
+      (find-file file)
+      (consult-line))))
+;;; Move buffer file
+(defun qv/move-buffer-file (new-location)
+  "Renames both current buffer and file it's visiting to NEW-NAME."
+  (interactive "FMove file: ")
+  (let ((name (buffer-name))
+        (filename (buffer-file-name)))
+    (if (not filename)
+        (message "Buffer '%s' is not visiting a file!" name)
+      (if (file-exists-p new-location)
+          (message "File '%s' already exists!" new-location)
+        (rename-file filename new-location 1)
+        (rename-buffer (file-name-nondirectory new-location))
+        (set-visited-file-name new-location)
+        (set-buffer-modified-p nil)))))

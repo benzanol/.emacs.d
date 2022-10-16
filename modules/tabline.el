@@ -1,4 +1,5 @@
 (qv/package tab-line)
+(qv/package cl-seq)
 
 ;;; Custom Name
 (setq tab-line-tab-name-function 'qv/tab-line-name)
@@ -12,7 +13,9 @@
 
 (setq tab-line-tabs-function 'qv/tab-line-function)
 (defun qv/tab-line-function ()
-  (setcdr qv/tab-line-tabs (seq-filter 'buffer-live-p (cdr qv/tab-line-tabs))))
+  (setcdr qv/tab-line-tabs
+          (cl-remove-duplicates
+           (seq-filter 'buffer-live-p (cdr qv/tab-line-tabs)))))
 
 ;;;; Close Tab
 (setq tab-line-close-tab-function 'qv/tab-line-close)
@@ -32,24 +35,34 @@
     (tab-line-mode 0)
     (qv/tab-line-new)))
 
-(defun qv/tab-line-new ()
+(defun qv/tab-line-new (&optional arg)
   (interactive)
-  (if tab-line-mode
-      (let ((new (get-buffer (read-buffer "New Tab: " nil nil)))
-            (tabs qv/tab-line-tabs))
-        (unless (memq new tabs)
-          (setcdr (last tabs) (list new))
-          (switch-to-buffer new)
+  (if (and arg (listp arg))
+      (progn (setq-local qv/tab-line-tabs arg)
+             (setcdr (last arg) (list (current-buffer)))
+             (tab-line-mode))
+
+    (if (eq arg 'new)
+        (progn (setq-local qv/tab-line-tabs (list 'tabs (current-buffer)))
+               (tab-line-mode))
+      
+      (if tab-line-mode
+          (let ((new (if (bufferp arg) arg
+                       (get-buffer (read-buffer "New Tab: " nil nil))))
+                (tabs qv/tab-line-tabs))
+            (unless (memq new tabs)
+              (setcdr (last tabs) (list new))
+              (switch-to-buffer new)
+              (setq-local qv/tab-line-tabs tabs)
+              (tab-line-mode)))
+        (let* ((f (lambda (b) (with-current-buffer (if (consp b) (car b) b) tab-line-mode)))
+               (b (when (seq-filter f (buffer-list))
+                    (read-buffer "Join tab group: " nil nil f)))
+               (tabs (if (or (null b) (string= b "")) (list 'tabs)
+                       (with-current-buffer b qv/tab-line-tabs))))
           (setq-local qv/tab-line-tabs tabs)
-          (tab-line-mode)))
-    (let* ((f (lambda (b) (with-current-buffer (if (consp b) (car b) b) tab-line-mode)))
-           (b (when (seq-filter f (buffer-list))
-                (read-buffer "Join tab group: " nil nil f)))
-           (tabs (if (or (null b) (string= b "")) (list 'tabs)
-                   (with-current-buffer b qv/tab-line-tabs))))
-      (setq-local qv/tab-line-tabs tabs)
-      (setcdr (last tabs) (list (current-buffer)))
-      (tab-line-mode))))
+          (setcdr (last tabs) (list (current-buffer)))
+          (tab-line-mode))))))
 
 ;;;; Move Tabs
 (defun qv/tab-line-move (&optional direction)
@@ -79,15 +92,15 @@
 ;;; Keybindings
 (qv/keys qv/tab-line-mode-map
   :sparse t
-  "M-a" tab-line-switch-to-prev-tab
-  "M-d" tab-line-switch-to-next-tab
-  "M-w" tab-line-close-tab
-  "M-s" qv/tab-line-new
-  "M-A" (qv/tab-line-move 'left)
-  "M-D" (qv/tab-line-move 'right))
+  "M-C-a" tab-line-switch-to-prev-tab
+  "M-C-d" tab-line-switch-to-next-tab
+  "M-C-w" tab-line-close-tab
+  "M-C-s" qv/tab-line-new
+  "M-C-q" (qv/tab-line-move 'left)
+  "M-C-e" (qv/tab-line-move 'right))
 
 (qv/keys *
-  "M-s" qv/tab-line-new)
+  "M-C-s" qv/tab-line-new)
 
 (push (cons 'tab-line-mode qv/tab-line-mode-map) minor-mode-map-alist)
 

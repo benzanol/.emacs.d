@@ -1,0 +1,6 @@
+[submodule "my-packages/flowchart"]
+	path = my-packages/flowchart
+	url = ./my-packages/flowchart/
+[submodule "my-packages/python-elisp"]
+	path = my-packages/python-elisp
+	url = ./my-packages/python-elisp/

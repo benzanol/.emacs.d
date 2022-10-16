@@ -5,7 +5,7 @@
  bg2    "#14161B"
  bg3    "#1F252E"
  gray1  "#98A8B0"
- gray2  "#7C8084"
+ gray2  "#848890"
  gray3  "#484B54"
  black  "#0E1216"
  red    "#D75F5F"
@@ -21,6 +21,9 @@
    bg "#000000"
    bg2 "#000000"
    bg3 "#000000"))
+
+;; High Transparency
+;; (qv/set-colors bg "#00040A" bg2 "#00040A" bg3 "#00040A")
 
 ;;; Basic Faces
 (when (display-graphic-p)
@@ -43,12 +46,13 @@
 (qv/face mode-line :fg fg :bg bg2 :b nil :iv nil)
 (qv/face mode-line-inactive :fg gray2 :bg bg2 :b nil :iv nil)
 (qv/face fringe mode-line-inactive :bg nil)
+(qv/face header-line mode-line :fg nil :bg nil)
 
 (if (display-graphic-p)
     (qv/face vertical-border fringe :iv t)
   (qv/face vertical-border :fg gray2 :s italic))
 
-(qv/face doom-modeline-buffer-modified (error bold))
+(qv/face doom-modeline-buffer-modified error :w bold)
 
 ;;; Font Lock Faces
 ;; Purple and Blue

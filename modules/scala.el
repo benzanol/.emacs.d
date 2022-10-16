@@ -110,19 +110,39 @@
     (switch-to-buffer buf)))
 
 ;;; Setup
-(qv/keys scala-mode-map
-  "g =" (@ qv/scala-indent-document
-           (save-excursion
-             (dotimes (i (line-number-at-pos (point-max)))
-               (goto-line (1+ i))
-               (scala-indent:indent-line))))
-  "<tab>" scala-indent:indent-line)
+(qv/keys scala-mode-map :sparse t)
+;; "<normal>g =" (@ qv/scala-indent-document
+;;          (save-excursion
+;;            (dotimes (i (line-number-at-pos (point-max)))
+;;              (goto-line (1+ i))
+;;              (scala-indent:indent-line))))
+;; "<tab>" scala-indent:indent-line)
 
-(qv/hook scala-mode-hook qv/scala-setup
-  (outline-minor-mode 0)
-  (hs-minor-mode 1)
-  (lsp-headerline-breadcrumb-mode 0)
-  (yas-minor-mode 1)
-  (run-with-timer 0.01 nil (lambda () (flycheck-mode 0)))
-  (setq-local indent-tabs-mode t
-              tab-width 2))
+(setq qv/scala-do-lsp t)
+(qv/hook scala-mode-hook qv/scala-lsp-setup
+  (when (and buffer-file-name qv/scala-do-lsp)
+    ;;(outline-minor-mode 0)
+    ;;(hs-minor-mode 1)
+    (lsp)
+    (lsp-headerline-breadcrumb-mode 0)
+    (flycheck-mode 1)
+
+    (setq-local indent-tabs-mode nil
+                tab-width 2)))
+
+(when (eq major-mode 'scala-mode) (qv/scala-setup))
+
+;;; Scala tabs
+(qv/require tabline)
+(setq qv/scala-tabs nil)
+
+(qv/hook scala-mode-hook qv/scala-tab-setup
+  (when buffer-file-name
+
+    (if qv/scala-tabs
+        (qv/tab-line-new qv/scala-tabs)
+
+      (qv/tab-line-new 'new)
+      (setq qv/scala-tabs qv/tab-line-tabs))))
+
+(when (eq major-mode 'scala-mode) (qv/scala-tab-setup))
