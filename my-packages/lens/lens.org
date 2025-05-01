@@ -1,0 +1,42 @@
+Every lens has a =source= and a =display-mode=
+
+* What is a lens????
+A lens is not a global object. A lens is the text that holds it. This means that you can undo and such without any issues.
+But how can a buffer being changed update similar lenses? A buffer doesn't hold a list of lenses that reference it, it holds a list of buffers which reference it. Then, every time it is modified it searches through these buffers.
+
+The ='lens-begin= and ='lens-end= holds a list with the following three elements:
+=spec=: A symbol holding the /behavior/ of the lens.
+=text=: The text (provided by =source:init=, and used by =display:tostate= to calculate =:state=)
+=state=: An object holding internal state
+
+The spec is a symbol with the following properties:
+=:source= - Plist: =(:init() -> TEXT, :update(TEXT), :replace(TEXT) -> STR, :save?(TEXT), :title?() -> STR)=
+=:display= - Plist: =(:tostate(TEXT) -> STATE, :totext(STATE) -> TEXT, :insert(SPEC, STATE) -> INSERT)=
+=:style= - Plist: =:props, :head-props, :foot-props, :face, :head-face, :foot-face=
+
+The insert text is expected to start with a read-only newline, which will be formatted as if it was in the header with (=head-props= and =head-face=).
+
+* Lifecycle
+*Creation*
+- Generate text content with =source:init=
+- Generate the state with =display:tostate(text)=
+- Generate the insert with =display:insert(spec, state-copy)=
+
+*Modifying*
+It is up to the modification hook itself to be able to modify the lens. It should:
+- Modify the state copy (this is ok)
+- Generate new text with =display:totext= - if this errors, don't continue
+- Generate the new insert with =display:insert(spec, newstate-copy)= - if this errors, don't continue
+- Replace the lens with a new lens
+- Save with =source:save(text)=
+
+*External Modification*
+- Find the lens - the spec could be equipped with an extra property like =:text-buffer= to make this possible
+- Check if the lens text matches the existing text, and if it does, don't do anything (prevent loops)
+- Generate the new state with =display:tostate(spec, newtext)=
+- Generate the insert with =display:insert(spec, newstate-copy)=
+- Replace the lens with a new lens
+- *Don't* call =source:save=
+
+* Raw Lens
+Insert, then modification hook is called modifying the lens right after

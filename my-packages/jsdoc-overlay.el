@@ -1,0 +1,16 @@
+(defun jstype-display ()
+  (interactive)
+  (remove-overlays nil nil 'jstype t)
+  (save-excursion
+    (beginning-of-buffer)
+    (while (search-forward-regexp "/\\*\\* *@type: *\\(.*?\\) *\\*\\*/" nil t)
+      (let* ((type (match-string 1))
+             (string (propertize (concat ": " type) 'face 'font-lock-comment-face))
+             o)
+        (search-forward-regexp "\\(const\\|var\\|let\\) [^ \n]+")
+        (setq o (make-overlay (point) (point)))
+        (overlay-put o 'jstype t)
+        (overlay-put o 'after-string string)))))
+
+(qv/hook jstype-update ()
+  )

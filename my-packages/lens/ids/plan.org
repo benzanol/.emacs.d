@@ -1,0 +1,83 @@
+* Features
+*Structure:* Every state file is a list of global properties, and then its body
+
+*Id Property:* Every state file will have an =#+id= global property, allowing org files to reference each other despite name changes.
+
+*Type Property (+Hooks):* State files can have a =#+type= property, which specifies which hooks to be run.
+
+* Parse Org/Parse Markdown (Structure)
+Define base level functionality for converting between raw org/markdown and state structure objects.
+
+* File Operations (Structure)
+*Mode Specific Parsers:* =lens-mode-formats= defines parsers/generators for different modes
+=(lens-parse-file)=: Return the struct of the file as it is saved on disk
+=(lens-parse)=: Return the struct of the state as it exists in a buffer (or file if no buffer exists.)
+=(lens-operate)=: Mutates the buffer containing the state and then saves it
+
+Any =write/operate= operation will always result in the file being saved.
+If the file is not opened, it will be temporarily opened, saved if necessary, and then closed as soon as the operation is complete.
+
+Note that this opening/saving will trigger the corresponding hooks.
+
+** Query
+A variety of wrappers around the =parse.el= operations for performing common reads/operates.
+All of these do =lens-operate= except for =(lens-query-get)= which does =(lens-parse)=.
+
+~(lens-query-get FILE PROP)~
+~(lens-query-set FILE PROP VAL)~
+~(lens-query-modify FILE PROP (lambda (OLD-VAL) NEW-VAL))~
+
+~(lens-query-insert FILE ELEM POS &rest HEADINGS)~
+If you have a file with a heading called ="Favorite Fruits"= and you want to add a list item with the string ="Apples"= to the end, you can call ~(lens-query-insert "Apples" "___.org" nil "Favorite Fruits")~.
+If you instead want to add it to the beginning, simply set the =POS= parameter to =0=.
+~(lens-query-add FILE ELEM &rest HEADINGS)~ - Like lens query insert, but insert it at the end and only if it doesn't already exist.
+~(lens-query-remove FILE ELEM &rest HEADINGS)~ - Remove all instances of =ELEM= from the corresponding heading.
+
+
+* Ids
+Every state should have an =#+id= property at the very top of the file.
+A custom org link called =lens= will allow linking by id.
+
+=lens-directories=: List of directories that might contain state files
+=lens-id-index=: Hash table mapping ids to file paths
+=(lens-generate-id-index)=: Search all of =lens-directories= and add the ids to =lens-id-index=
+=(lens-id-file)=: Return the path associated with a certain id
+
+* Project Root/Parsing Types (types.el)
+State files can have a =#type:= tag, which indicates which type they are associated with.
+
+=<lens-type-directory>/NAME.org= will define the type called =NAME=
+=lens-type-alist=: Alist mapping type names (symbols) to plists
+=(lens-generate-type-alist DIR)=: Set up =lens-type-alist= to map type names to these plists
+
+=(lens-state-p)=: Returns if a buffer is in the project root and is a valid file.
+=(lens-get-type-property)=: Get a type property (taking =inherit= into account).
+
+These are some of the properties that can be defined in type files
+
+** Properties/Headings
+=#+inherit:= List of types to inherit from
+*Instances* - A list of links to examples
+*Props* - Properties the note can have
+*Create* - The create hook
+*Open* - The open hook
+*Save* - The save hook
+*Delete* - The delete hook
+
+* Hooks
+Up until now we've defined things, but we haven't /done/ anything. That's what the hooks are for.
+
+** Setup
+=find-file-hook= calls =(lens--on-open)=.
+Only set up the buffer if it is a =(lens-state-p)=.
+
+- Set =lens-root= to the project root
+- Set =lens-type= to the state type
+- Read the type, and calling any =:open= hooks
+
+** Save
+=after-save-hook= calls =(lens--on-save)=.
+Only run the save stuff if it is a =(lens-state-p)=.
+
+- Check to see if the type changed, and if it did, update the type file.
+

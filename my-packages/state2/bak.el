@@ -1,0 +1,11 @@
+(while (setq match (text-property-search-forward 's2-intangible t t))
+
+  (setq beg (prop-match-beginning match) end (prop-match-end match))
+  (message "%s - %s" beg end)
+  (setq ol (make-overlay beg beg))
+  (overlay-put ol 'after-string (qv/concat-line-prefix (buffer-substring beg (1- end))))
+  (delete-region beg (1- end))
+  (put-text-property (1- beg) (1+ beg) 'intangible t)
+  (put-text-property (1- beg) beg 'face nil)
+  (put-text-property beg (1+ beg) 'line-prefix nil)
+  )

@@ -1,0 +1,22 @@
+* Formatting State
+When you call format on a State, several things are created:
+
+A Dom is created from the State. This does not involve creating
+any other nested Doms, as the Dom simply contains the Id of the
+State for each child. The reason for this is that if the Dom
+could be created based on the state of nested States, and those
+States change, the Dom in question could also change, so every
+parent State would need to be completely re-evaluated and
+re-inserted for every State change.
+
+A Ref is created for this instance of the State's insertion. This
+Ref contains the Id of the State, the parent ref if there is one,
+the Dom, as well as an empty list of overlays, which will get
+populated upon insertion.
+
+A list of Formats, each being a line, is created from the Dom. A
+Format is a list, with the first element being the associated Ref,
+and the remaining elements being strings or formats. Having the Ref
+allows the overlay lists to be populated upon insertion. Creating
+the format is the first step that involves recursively creating
+Doms/Refs/Formats for the nested states.

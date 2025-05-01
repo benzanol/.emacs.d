@@ -1,0 +1,72 @@
+(setq start (current-time))
+(load "~/.emacs.d/modules/base.el")
+
+
+(bz/require functions)
+(bz/require buffer-history)
+(bz/require recenter)
+(bz/require whitespace)
+(bz/require helpful)
+(bz/require spelling)
+(bz/require recentf)
+
+(bz/require settings)
+(bz/require keys)
+(bz/require faces)
+(bz/require minibuffer)
+(bz/require modeline)
+(bz/require undotree)
+(bz/require rearranging)
+(bz/require elisp)
+(bz/require multicursors2)
+
+(bz/require emacs-wrapped)
+(emacs-wrapped-enable)
+
+;; (bz/require spelling)
+;; (bz/require vterm)
+;; (bz/require undotree)
+;; (bz/require helpful)
+;; (bz/require rearranging)
+;; (bz/require nixos)
+;; (bz/require pick-window)
+
+
+(defun bz/load-window-manager ()
+  (interactive)
+  (server-start)
+
+  (bz/require activities)
+  (bz/require echobar)
+  (bz/require projects)
+  (bz/require vterm)
+  (bz/require exwm)
+  (bz/require nixos)
+
+  (echo-bar-mode))
+
+
+(bz/after dired)
+(bz/after helpful)
+(bz/after org)
+(bz/after dired)
+(bz/after helpful)
+(bz/after magit)
+(bz/after custom)
+;; (bz/after eww)
+(bz/after emms)
+(bz/after lsp)
+(bz/after hideshow)
+(bz/after outline)
+(bz/after flycheck)
+(bz/after js javascript)
+(bz/after python-mode python)
+(bz/after scala-mode scala)
+(bz/after rust-mode rust)
+(bz/after dart-mode dart)
+
+(setq end (current-time))
+(message "Loaded in %s Seconds"
+         (/ (- (+ (* (expt 10 6) (nth 1 end)) (nth 2 end))
+               (+ (* (expt 10 6) (nth 1 start)) (nth 2 start)))
+            (float (expt 10 6))))
