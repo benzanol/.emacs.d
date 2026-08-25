@@ -1,9 +1,14 @@
+(require 'cl-lib)
+(require 'dash)
+
+
 (defvar emacs-wrapped-file "~/.emacs.d/emacs-wrapped.json")
 (defvar emacs-wrapped-save-delay 20)
 (defvar emacs-wrapped-track-delay 5)
 (defvar emacs-wrapped nil)
 
 (defun emacs-wrapped-save ()
+  "Save the Emacs wrapped information."
   (interactive)
   (dolist (assoc emacs-wrapped)
     (setcdr assoc (--sort (> (cdr it) (cdr other)) (cdr assoc))))
@@ -11,8 +16,7 @@
   (with-temp-buffer
     (json-insert emacs-wrapped)
     (json-pretty-print (point-min) (point-max))
-    (let ((inhibit-message t))
-      (write-region (point-min) (point-max) emacs-wrapped-file))))
+    (write-region (point-min) (point-max) emacs-wrapped-file nil 0)))
 
 (defmacro emacs-wrapped-increment-place (category entry &optional amount)
   `(let ((val (alist-get ,entry (alist-get ,category emacs-wrapped))))
@@ -38,6 +42,7 @@
 
 
 (defun emacs-wrapped-enable ()
+  "Enable tracking for Emacs wrapped."
   (interactive)
   (emacs-wrapped-disable)
   (let ((json-key-type 'symbol))
@@ -50,6 +55,7 @@
   (run-with-timer 0 emacs-wrapped-track-delay #'emacs-wrapped--track-on-timer))
 
 (defun emacs-wrapped-disable ()
+  "Disable tracking for Emacs wrapped."
   (interactive)
   (cancel-function-timers #'emacs-wrapped-save)
 

@@ -1,23 +1,28 @@
 (require 'subr-x)
 (require 'dash)
 
-(setq bz/main-frame (selected-frame))
-
-(setq bz/current-activity
+(defvar bz/current-activity
       (list "Default" (cons 'current-layout "Default")
             (cons 'layouts
                   (list (cons "Default"
                               (cons nil (current-window-configuration)))))
             (cons 'buffers (mapcar (lambda (buf) (cons nil buf)) (buffer-list)))
             (cons 'point (point))))
-(setq bz/activities (list bz/current-activity))
+(defvar bz/activities (list bz/current-activity))
+
+
+(defun bz/activity-base-frame ()
+  (cond ((bound-and-true-p exwm--floating-frame)
+         (nth exwm-workspace-current-index exwm-workspace--list))
+        ((selected-frame))))
+
 
 (defun bz/add-activity (name &optional window-config)
   "Add a new activity with the name specified by the symbol NAME
 By default, only the current buffer is added to the new activity,
 but BUFFERS specifies which should be used instead."
   (interactive "MActivity Name: ")
-  (select-frame bz/main-frame)
+  (select-frame (bz/activity-base-frame))
   (if (assoc name bz/activities)
       (message "Activity already exists")
     (push (list (upcase-initials (substring-no-properties name))
@@ -52,7 +57,7 @@ but BUFFERS specifies which should be used instead."
   "Delete the current activity from the activities list"
   (interactive)
 
-  (select-frame bz/main-frame)
+  (select-frame (bz/activity-base-frame))
 
   (setq bz/activities (delq bz/current-activity bz/activities))
 
@@ -93,7 +98,7 @@ but BUFFERS specifies which should be used instead."
   (let ((new-activity (--find (string= (downcase name) (downcase (car it))) bz/activities)))
     (if (null new-activity) (when (> (length name) 0) (bz/add-activity name))
 
-      (select-frame bz/main-frame)
+      (select-frame (bz/activity-base-frame))
 
       ;; Add the activity being switched away from to the start of the history
       (push (car bz/current-activity) bz/activity-history)
@@ -132,7 +137,7 @@ but BUFFERS specifies which should be used instead."
       (message "No last unnumbered activity"))))
 
 (defun bz/save-current-layout ()
-  (select-frame bz/main-frame)
+  (select-frame (bz/activity-base-frame))
   (setcdr (cdr (assoc (alist-get 'current-layout bz/current-activity)
                       (alist-get 'layouts bz/current-activity)))
           (current-window-configuration))
@@ -140,7 +145,7 @@ but BUFFERS specifies which should be used instead."
 
 (defun bz/add-layout (name &optional layout)
   (interactive "MLayout Name: ")
-  (select-frame bz/main-frame)
+  (select-frame (bz/activity-base-frame))
   (let ((layout-list (assoc 'layouts bz/current-activity)))
     (if (assoc name layout-list)
         (message "Layout already exists")
@@ -156,7 +161,7 @@ but BUFFERS specifies which should be used instead."
   "Delete the layout with NAME from the layout list of the current activity"
   (interactive
    (list (completing-read "Remove Layout: " (alist-get 'layouts bz/current-activity))))
-  (select-frame bz/main-frame)
+  (select-frame (bz/activity-base-frame))
   (if (equal name (alist-get 'current-layout bz/current-activity))
       (message "You can't delete the current layout")
     (let ((new-layout-list ()))
@@ -167,7 +172,7 @@ but BUFFERS specifies which should be used instead."
 
 (defun bz/switch-to-layout (name)
   (interactive (list (completing-read "Select Layout: " (alist-get 'layouts bz/current-activity))))
-  (select-frame bz/main-frame)
+  (select-frame (bz/activity-base-frame))
   (bz/save-current-layout)
   (setcdr (assoc 'current-layout bz/current-activity) name)
   (set-window-configuration (cddr (assoc name (alist-get 'layouts bz/current-activity)))))

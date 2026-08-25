@@ -1,4 +1,9 @@
-(bz/package rainbow-delimiters)
+;; -*- lexical-binding: t; -*-
+
+(require 'bz-base)
+
+(require 'rainbow-delimiters)
+
 
 (bz/hook emacs-lisp-mode-hook rainbow-delimiters-mode)
 (setq rainbow-delimiters-max-face-count 7)
@@ -10,3 +15,8 @@
 (bz/face rainbow-delimiters-depth-5-face :fg "cyan")
 (bz/face rainbow-delimiters-depth-6-face :fg "dodgerblue")
 (bz/face rainbow-delimiters-depth-7-face :fg "mediumorchid2")
+
+
+;;; Provide
+
+(provide 'bz-rainbow)

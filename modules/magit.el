@@ -1,5 +1,10 @@
-(bz/package magit)
-(bz/package dash)
+;; -*- lexical-binding: t; -*-
+
+(require 'bz-base)
+
+(require 'dash)
+(require 'magit)
+
 
 ;; Config
 ;; git config --global user.name "Adam Tillou"
@@ -8,7 +13,6 @@
 (setq magit-display-buffer-function (lambda (b) (display-buffer-same-window b nil)))
 
 (bz/hook magit-mode-hook bz/magit-variable-pitch
-  (undo-tree-mode 0)
   (unless (eq major-mode 'magit-log-mode)
     (variable-pitch-mode 1)))
 
@@ -19,7 +23,9 @@
 (remove-hook 'magit-pre-refresh-hook 'magit-maybe-save-repository-buffers)
 (defun magit-maybe-save-repository-buffers () nil)
 
+
 ;;; Faces
+
 (bz/face magit-section-highlight :bg bg2)
 (bz/face magit-diff-context-highlight fixed-pitch :bg bg2)
 
@@ -41,30 +47,55 @@
 (bz/face magit-diff-file-heading nil :w normal :s italic)
 (bz/face magit-diff-file-heading-highlight magit-section-highlight)
 
-(load-file "~/.githubtoken.el")
 (bz/key * "C-x C-p C-p" (insert (getenv "GITHUB_TOKEN")))
 
+
 ;;; Keybindings
+
+(bz/keys magit-blob-mode-map
+  :sparse t)
+
 (bz/keys magit-diff-mode-map
   :sparse t
   :parent magit-status-mode-map)
 
+(bz/keys magit-section-heading-map
+  "ESC" nil)
+
 (bz/keys magit-status-mode-map
+  "ESC" nil
   "j" nil "k" nil "h" nil "l" nil
   "J" nil "K" nil "H" nil "L" nil
   "g" nil
   "M-w" nil
   "M-1" nil "M-2" nil "M-3" nil "M-4" nil
 
-  "f" magit-find-file
+  "C-b" magit-branch
+
+  "p" magit-pull
+  "f" magit-fetch
+  "z" magit-stash
+  "Z" magit-stash-pop
+
+  "F" magit-find-file
   "r" magit-refresh
   "R" magit-refresh-all
   "G" magit-checkout
   "d" magit-discard
   "SPC" (@ bz/magit-section-toggle
-           (ignore-errors (next-line) (goto-char (1- (line-beginning-position)))
+           (ignore-errors (forward-line) (goto-char (1- (pos-bol)))
                           (beginning-of-line))
-           (call-interactively 'magit-section-toggle)))
+           (call-interactively 'magit-section-toggle))
+
+
+  )
+
 
 ;;; Open in posframe
+
 (bz/advise :remove magit-commit-create bz/exwm-posframe)
+
+
+;;; Provide
+
+(provide 'bz-magit)

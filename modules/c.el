@@ -1,3 +1,4 @@
+;; -*- lexical-binding: t; -*-
 (setf (alist-get 'c-mode bz/indent-command-alist)
       nil)
 
@@ -42,7 +43,13 @@
 
 
 ;; Use system clangd instead of cached one (doesn't work for some reason)
-(setq lsp-clients-clangd-executable "clangd")
+;; (setq lsp-clients-clangd-executable "clangd")
+(setq lsp-clients-clangd-executable nil)
 
 ;; Set indent width
 (setq c-basic-offset 4)
+
+
+;;; Provide
+
+(provide 'bz-c)

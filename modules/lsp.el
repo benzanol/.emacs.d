@@ -1,3 +1,4 @@
+;; -*- lexical-binding: t; -*-
 (bz/package lsp)
 (bz/package lsp-mode)
 (bz/package lsp-ui)
@@ -15,12 +16,15 @@
 (bz/require lsp-popup)
 (bz/require lsp-dired)
 
+
 ;;; Execute action by name
+
 (defun bz/lsp-action-by-name (&rest names)
   (let* ((actions (lsp-code-actions-at-point))
          (action (--find (member (gethash "title" it) names) actions)))
     (if action (lsp-execute-code-action action)
       (error "Action%s \"%s\" not found" (if (eq (length names) 1) "" "s") (s-join "\"/\"" names)))))
+
 
 ;;; Override Warn
 
@@ -31,7 +35,9 @@
 
 (setq lsp-log-io t)
 
+
 ;;; Header line
+
 (bz/face lsp-headerline-breadcrumb-path-face nil :fg gray1 :w bold)
 (bz/face lsp-headerline-breadcrumb-symbols-warning-face
   lsp-headerline-breadcrumb-symbols-face :u (:color "DarkOrange"))
@@ -46,7 +52,9 @@
 (bz/face markdown-code-face :fg fg)
 (bz/face flycheck-posframe-face :fg red)
 
+
 ;;; Don't auto-select action
+
 (bz/advise :override lsp--select-action bz/lsp--select-action-noauto (actions)
   "Select an action to execute from ACTIONS."
   (if (seq-empty-p actions) (signal 'lsp-no-code-actions nil)
@@ -56,6 +64,7 @@
                             (-compose (lsp--create-unique-string-fn)
                                       #'lsp:code-action-title)
                             nil t))))
+
 
 ;;; Settings
 
@@ -73,6 +82,8 @@
 
 
 (bz/face rust-question-mark error)
+
+(bz/face lsp-ui-doc-background :bg bg3)
 
 ;; (bz/face lsp-flycheck-warning-unnecessary
 ;;   lsp-lsp-flycheck-warning-unnecessary-face)
@@ -94,6 +105,7 @@
 ;; Completely disable lens (displaying big blocks of documentation in the echo area)
 (bz/advise :override lsp-lens-refresh bz/lsp-lens-disable (&rest args) (lsp-lens-mode 0))
 
+
 ;;; Keymap
 
 (bz/keys lsp-mode-map
@@ -101,12 +113,15 @@
   ;; "C-x C-f" (@ bz/lsp-save (if (buffer-modified-p) (save-buffer) (lsp-on-save)))
 
   "C-c C-e" flycheck-explain-error-at-point
-  "C-c C-b" flycheck-buffer
+  ;; "C-c C-b" flycheck-buffer
+  "C-c C-b" (@ bz/lsp-refresh-buffer
+               (lsp-disconnect)
+               (run-with-timer 1 nil (lambda (b) (with-current-buffer b (lsp))) (current-buffer)))
 
   ;; "C-j" flycheck-next-error
-  "C-c C-j" flycheck-next-error
+  "C-j" flycheck-next-error
   ;; "C-k" flycheck-previous-error
-  "C-c C-k" flycheck-previous-error
+  "C-k" flycheck-previous-error
 
   "C-c C-w C-s" lsp-workspace-shutdown
   "C-c C-w C-r" lsp-workspace-restart
@@ -139,7 +154,6 @@
        (bz/lsp-popup))))
 
 
-
 ;;; Setup
 
 (bz/hook lsp-mode-hook bz/lsp-setup
@@ -167,7 +181,6 @@
 ;; run super slow like it does otherwise
 
 (bz/advise :override lsp--post-command ignore)
-
 
 
 ;;; Languages
@@ -207,6 +220,7 @@
 
 ;; This is necessary for wasm files
 (setq lsp-rust-analyzer-diagnostics-disabled ["missing-unsafe"])
+
 
 ;;;;; How rust should organize imports
 
@@ -272,7 +286,9 @@ from that path."
 
     (if return-idx (cons imports idx) imports)))
 
+
 ;;;;; Make rust struct multiline
+
 (bz/hook company-after-completion-hook bz/rust-struct-expand :remove
          (bz/delay 0
                    (line-end-position)
@@ -286,6 +302,8 @@ from that path."
                          (replace-string ": () }" "\n}" nil (point) (marker-position m))
                          (bz/indent-buffer))
                        (forward-line) (end-of-line) (backward-char)))))
+
+
 ;;; Rename file and imports
 
 (setq bz/lsp-import-format-alist
@@ -318,3 +336,14 @@ from that path."
         (beginning-of-buffer)
         (replace-string old-str new-str)
         (save-buffer)))))
+
+
+;;; Hook
+
+(bz/hook go-mode-hook bz/go-mode-setup
+  (lsp))
+
+
+;;; Provide
+
+(provide 'bz-lsp)

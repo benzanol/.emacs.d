@@ -1,40 +1,58 @@
-(bz/package dash)
+;; -*- lexical-binding: t; -*-
+
+(require 'bz-base)
+
+(require 'benchmark)
+(require 'dash)
+(require 'helpful)
+(require 'nadvice)
+
+
+;;; Buffer string no properties
+
+(defun bz/buffer-string (&optional buf)
+  (if (null buf) (buffer-substring-no-properties (point-min) (point-max))
+    (with-current-buffer buf (buffer-substring-no-properties (point-min) (point-max)))))
 
 
 ;;; Shorthand lambda syntax
+
 (defmacro @ (&rest exprs)
-    (list 'lambda '(&rest @*)
-          (cons 'let (cons '((@1 (car @*)) (@2 (cadr @*))) exprs))))
+  (list 'lambda '(&rest @*)
+        (cons 'let (cons '((@1 (car @*)) (@2 (cadr @*))) exprs))))
 
 (defmacro @0 (&rest exprs) (cons 'lambda (cons () exprs)))
 (defmacro @1 (&rest exprs) (cons 'lambda (cons '(@1) exprs)))
 (defmacro @2 (&rest exprs) (cons 'lambda (cons '(@1 @2) exprs)))
 
+
 ;;; Modify in place
+
 (defmacro => (var func &rest args)
   `(setf ,var (,func ,var . ,args)))
 
-;;; Shell functions
-(defun $ (cmd &rest args)
-  (interactive "sCommand: ")
-  (let ((arg-strs (--map (shell-quote-argument (format "%s" it)) args)))
-    (start-process-shell-command "command" "*Shell*" (apply #'format cmd arg-strs))))
-
-(defun $$ (cmd &rest args)
-  (let ((arg-strs (--map (shell-quote-argument (format "%s" it)) args)))
-    (shell-command-to-string (apply #'format cmd arg-strs))))
 
 ;;; Special Eval
-(setq bz/eval-variable-number 1)
-(defun bz/eval (expr &optional lexical)
-  (interactive (list (read--expression "Eval: ")))
 
-  (let* ((print-length nil) (print-depth nil)
-         (time (benchmark-elapse (setq $0 (eval expr lexical))))
+(defvar $0 nil "The result of the most recent evaluation")
+
+(defvar bz/eval-variable-number 1)
+(defun bz/eval (string &optional lexical)
+  (interactive (list (read-string "Eval: ") t))
+
+  (setq string (string-trim string))
+
+  (let* ((print-length nil) (print-level nil)
+         (is-math (string-match-p "\\`[0-9{]" string))
+         (expr (unless is-math (read string)))
+         (time (benchmark-elapse
+                 (if is-math (setq $0 (bz/math string))
+                   (setq $0 (eval expr lexical)))))
          (var-str (format "$%s" bz/eval-variable-number)))
 
     (set (intern var-str) $0)
-    (put (intern var-str) 'variable-documentation (prin1-to-string expr))
+    (put (intern var-str) 'variable-documentation
+         (if is-math string (prin1-to-string expr)))
     (setq bz/eval-variable-number (1+ bz/eval-variable-number))
 
     (message
@@ -42,9 +60,9 @@
      (propertize (format "(%ss)" time) 'face 'shadow)
      (propertize var-str 'face 'help-key-binding)
      (propertize "=" 'face 'bold)
-     (prin1-to-string $0)
+     (cl-prin1-to-string $0)
      ;; If the expression was a local variable, display the global value next to it
-     (if (not (and (symbolp expr) (local-variable-p expr))) ""
+     (if (not (and expr (symbolp expr) (local-variable-p expr))) ""
        (format "   %s = %s" (propertize "global" 'face 'help-key-binding)
                (default-value expr))))))
 
@@ -54,7 +72,9 @@
 ;;   (let ((name (symbol-name sym)))
 ;;     (unless (or (string= name "") (eq (aref name 0) ?$)) (funcall func sym))))
 
+
 ;;; Amazing Loop
+
 (defmacro for (vars iter &rest exprs)
   "A special macro for looping.
 
@@ -119,7 +139,9 @@ exprs can start with a plist, containing the following properties:
 
        (reverse =out=))))
 
+
 ;;; Indexing
+
 (defmacro indejas (expr)
   (if-let* ((str (and (symbolp expr) (symbol-name expr)))
             (start (and (string= "}" (substring str -1)) (string-match "{" str)))
@@ -131,7 +153,9 @@ exprs can start with a plist, containing the following properties:
     (if (not (listp expr)) expr
       (--map (macroexpand-1 `(indejas ,it)) expr))))
 
+
 ;;; Wait for Input
+
 (defmacro bz/wait (&rest vars)
   `(progn
      (redraw-display)
@@ -139,12 +163,15 @@ exprs can start with a plist, containing the following properties:
                  (lambda (var) (format "%s: %s" var (eval var)))
                  ',vars "\n"))))
 
+
 ;;; Avg
 
 (defun avg (&rest list) (/ (apply #'+ list) (float (length list))))
 
+
 ;;; Read Unicode Chars
-(setq bz/unicode-chars nil)
+
+(defvar bz/unicode-chars nil)
 
 (defun bz/insert-unicode-char ()
   (interactive)
@@ -161,7 +188,6 @@ exprs can start with a plist, containing the following properties:
               (car (split-string result "\t"))))))
 
 
-
 ;;; Read Fonts
 
 (defun bz/read-font ()
@@ -170,27 +196,67 @@ exprs can start with a plist, containing the following properties:
                      "abcdefghijklmnopqrstuvwxyz"
                      "0123456789"
                      ",.;:?!@#$%^&*~_-=+()[]{}<>\"'`/|\\"))
-         (space (propertize "\t" 'display '(space :align-to 50))))
-    (insert
-     (car (split-string
-           (completing-read
-            "Font Family: "
-            (--map (format "%s%s%s" it space (propertize ex 'face (list :family it)))
-                   (font-family-list)))
-           "\t")))))
+         (space (propertize "\t" 'display '(space :align-to 50)))
+         (font (car (split-string
+                     (completing-read
+                      "Font Family: "
+                      (--map (format "%s%s%s" it space (propertize ex 'face (list :family it)))
+                             (font-family-list)))
+                     "\t"))))
+    (when (called-interactively-p t) (insert font))))
+
+
+(require 'face-remap)
+
+(defun bz/read-font-for-face (face)
+  "Like `bz/read-font' but also live-previews and permanently sets FACE's :family.
+
+This must be run in the buffer you want to preview the face for!"
+  (interactive (list (read-face-name "Face: ")))
+  (let* ((target-buffer (current-buffer))
+         (remap-cookie nil)
+         (last-font nil)
+         (preview-hook
+          (lambda ()
+            (when (and (minibufferp)
+                       (boundp 'vertico--index)
+                       (boundp 'vertico--candidates)
+                       (>= vertico--index 0))
+              (when-let* ((candidate (nth vertico--index vertico--candidates))
+                          (font (car (split-string candidate "\t"))))
+                (unless (equal font last-font)
+                  (setq last-font font)
+                  (with-current-buffer target-buffer
+                    (when remap-cookie
+                      (face-remap-remove-relative remap-cookie))
+                    (setq remap-cookie
+                          (face-remap-add-relative face :family font)))))))))
+    (unwind-protect
+        (progn
+          (add-hook 'post-command-hook preview-hook)
+          (bz/read-font))
+      (remove-hook 'post-command-hook preview-hook)
+      (with-current-buffer target-buffer
+        (when remap-cookie
+          (face-remap-remove-relative remap-cookie)))
+      ;; commit: last-font is whatever was highlighted when RET was pressed
+      (when last-font (insert last-font)))))
 
 
 ;;; Base converter
+
 (defun bz/decimal-to (base num)
   (apply '+ (mapcar (lambda (p) (* (expt 10 p) (% (/ num (expt base p)) base)))
                     (number-sequence 0 (if (eq num 0) 0 (floor (log num base)))))))
 
-(setq bz/base-chars "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+(defvar bz/base-chars "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 (defun bz/decimal-to-str (base num)
   (mapconcat (lambda (p) (string (aref bz/base-chars (% (/ num (expt base p)) base))))
              (reverse (number-sequence 0 (if (eq num 0) 0 (floor (log num base))))) ""))
 
+
 ;;; Prime factors
+
 (defun bz/superscript-number (num)
   (apply 'string
          (--map (aref "⁰¹²³⁴⁵⁶⁷⁸⁹" (- it ?0))
@@ -224,11 +290,12 @@ exprs can start with a plist, containing the following properties:
 
 ;;; Linux Executable
 
-(setq bz/executables nil)
+(defvar bz/executables nil)
+(defvar bz/apps)
 
 (defun bz/get-executables ()
   (or bz/executables
-      (setq bz/apps
+      (setq bz/executables
             (->> (split-string (getenv "PATH") ":")
                  (seq-filter #'file-directory-p)
                  (mapcar #'directory-files)
@@ -271,18 +338,8 @@ exprs can start with a plist, containing the following properties:
 ;;      (cdr app))))
 
 
-;;; Grep Directory
-(defun bz/grep (file)
-  (interactive "GSearch location: ")
-
-  (let ((bz/vertico-dont-format-candidates t))
-
-    (if (file-directory-p file)
-        (consult-grep file)
-      (find-file file)
-      (consult-line))))
-
 ;;; Move buffer file
+
 (defun bz/move-buffer-file (new-location)
   "Renames both current buffer and file it's visiting to NEW-NAME."
   (interactive "FMove file: ")
@@ -297,7 +354,9 @@ exprs can start with a plist, containing the following properties:
         (set-visited-file-name new-location)
         (set-buffer-modified-p nil)))))
 
+
 ;;; Escape Unicode Chars
+
 (defun bz/escape-chars (str)
   (let ((count 0) (i 0))
     (while (< i (length str))
@@ -316,15 +375,18 @@ exprs can start with a plist, containing the following properties:
         (line (line-number-at-pos)))
     (delete-region (point-min) (point-max))
     (insert escaped)
-    (goto-line line)))
+    (goto-char (point-min))
+    (forward-line (1- line))))
 
 (defun bz/escape-char-at-point ()
   (interactive)
-  (let ((escaped (format "\\u{%X}" (char-after))))
-    (delete-forward-char 1)
+  (let ((escaped (format "\\u%X" (char-after))))
+    (delete-char 1)
     (insert escaped)))
 
+
 ;;; Remove all advice
+
 (defun bz/unadvise (func)
   (interactive
    (list (helpful--read-symbol
@@ -332,14 +394,18 @@ exprs can start with a plist, containing the following properties:
           (helpful--callable-at-point)
           (lambda (fn) (advice--p (advice--symbol-function fn))))))
 
-  (advice-mapc (@ advice-remove func @1) func))
+  (advice-mapc (lambda (advice _) (advice-remove func advice)) func))
+
 
 ;;; Recompile modules
+
 (defun bz/compile-modules ()
   (interactive)
   (byte-recompile-directory "~/.emacs.d/modules/" 0))
 
+
 ;;; Type out a buffer char by char
+
 ;; Inspired by primegean editor tier list
 (defun bz/type-out-buffer ()
   (interactive)
@@ -357,7 +423,9 @@ exprs can start with a plist, containing the following properties:
       (insert (substring text index (1+ index)))
       (run-with-timer 0.05 nil 'bz/insert-rest-of-buffer buffer text (1+ index)))))
 
+
 ;;; Markdown to org
+
 (defun bz/md-to-org ()
   "Open a temporary buffer containing the current markdown file
 converted to org mode for emacs-friendly viewing."
@@ -370,13 +438,17 @@ converted to org mode for emacs-friendly viewing."
 
     (org-mode)))
 
+
 ;;; Add face text property
+
 (defun bz/add-face (text &rest faces)
   (dolist (face faces)
     (add-face-text-property 0 (length text) face t text))
   text)
 
+
 ;;; Insert without overlays
+
 (defun bz/insert-without-overlays (text)
   (let ((start (point)))
     (insert text)
@@ -385,16 +457,19 @@ converted to org mode for emacs-friendly viewing."
         (if (eq (overlay-end o) (point)) (move-overlay o (overlay-start o) start)
           (error "What the fook?"))))))
 
+
 ;;; Alphabet
-(setq alphabet "abcdefghijklmnopqrstuvwxyz")
-(defun alphabet (&optional n)
+
+(defvar bz/alphabet "abcdefghijklmnopqrstuvwxyz")
+(defun bz/alphabet (&optional n)
   (interactive)
-  (cond ((interactive-p) (insert alphabet))
-        (n (intern (substring alphabet n (1+ n))))
-        ((intern alphabet))))
+  (cond ((called-interactively-p 'interactive) (insert bz/alphabet))
+        (n (intern (substring bz/alphabet n (1+ n))))
+        ((intern bz/alphabet))))
 
 
 ;;; Rgn
+
 (defun rgn ()
   (interactive)
   (if mark-active (buffer-substring-no-properties (point) (mark))
@@ -402,6 +477,7 @@ converted to org mode for emacs-friendly viewing."
 
 
 ;;; Math eval
+
 (defun bz/math (str)
   (let* ((seg "") (dep 0) (count 1) (quoted 0)
          (repl (replace-regexp-in-string "^\\([a-zA-Z/-]+\\)=\\(.+\\)" "(setq \\1 \\2)" str))
@@ -413,10 +489,10 @@ converted to org mode for emacs-friendly viewing."
     (if (or (not (string= str repl)) (and (> (length str) 0) (eq (aref str 0) ?\")))
         (eval (read (or repl str)))
       (dotimes (i (length str))
-        (setq char (aref str i) update nil before nil)
+        (setq char (aref str i) update nil)
         (when (and dollar (not (and (>= char ?0) (<= char ?9)))) (setq dollar nil))
         (unless (eq quoted 0) (setq quoted (1- quoted)))
-        (cond (dollar )
+        (cond (dollar)
               ((and (not el) (eq char ?$)) (setq dollar t el t update t))
               ((eq char ?\()
                (if (and el (= dep 0) (= quoted 0))
@@ -450,7 +526,10 @@ converted to org mode for emacs-friendly viewing."
             (setq calc-str (concat calc-str (make-string count ?$)) count (1+ count))
             (push (read s) calc-args)))
         (string-to-number (apply #'calc-eval calc-str nil (mapcar 'eval (reverse calc-args))))))))
+
+
 ;;; Copy a self-referencing tree
+
 (defun bz/copy-looped-tree (tree &optional origs copies)
   (if (not (listp tree)) tree
 
@@ -469,6 +548,7 @@ converted to org mode for emacs-friendly viewing."
 
 
 ;;; Continued fractions
+
 (defun bz/continued-fraction (non rep &optional depth)
   (unless depth (setq depth 0))
   (cond ((and (null non) (null rep)) 1)
@@ -477,7 +557,9 @@ converted to org mode for emacs-friendly viewing."
                             (/ 1.0 (bz/continued-fraction (cdr non) rep depth)))))
         (t (+ (nth (mod depth (length rep)) rep) (/ 1.0 (bz/continued-fraction nil rep (1+ depth)))))))
 
+
 ;;; Cycles
+
 (defmacro bz/compose-cycles (&rest cycles)
   `(apply 'bz/compose-cycles-func ',cycles))
 
@@ -497,24 +579,35 @@ converted to org mode for emacs-friendly viewing."
       (setq cs (nconc cs (list c))))
     cs))
 
+
 ;;; Save position
+
 (defmacro bz/save-position (&rest body)
   `(let ((line (line-number-at-pos))
          (column (current-column)))
      ,@body
      (goto-char (point-min))
      (forward-line (1- line))
-     (forward-char (min column (- (point-at-eol) (point))))))
+     (forward-char (min column (- (pos-eol) (point))))))
+
+
 ;;; Bytes to string
+
 (defun bz/bytes-to-string (bytes-str)
   (let ((byte-strs (split-string bytes-str " ")))
     (read (format "\"%s\"" (string-join (--map (format "\\u00%s" it) byte-strs))))))
+
+
 ;;; Read color
+
 (defun bz/insert-color (color)
   (interactive (list (read-color "Insert Color: " t)))
   (when (stringp color)
     (insert (concat "#" (substring color 1 3) (substring color 5 7) (substring color 9 11)))))
-;;; Add 1 to certain letters
+
+
+;;; Add 1 to certain letters (topology textbook)
+
 (defun add-1-to-letters (string)
   (mapconcat
    (lambda (letter)
@@ -523,3 +616,74 @@ converted to org mode for emacs-friendly viewing."
           (1- letter) letter)))
    (append string nil)
    ""))
+
+
+;;; Byte compile package
+
+(defun bz/byte-compile-package-functions (package-name)
+  "Byte compile all functions belonging to PACKAGE-NAME."
+  (interactive "sPackage name: ")
+  (let ((package-regexp (format "\\`%s\\(-\\|\\'\\)" (regexp-quote package-name))))
+    (mapatoms
+     (lambda (sym)
+       (when (and (fboundp sym)
+                  (string-match-p package-regexp (symbol-name sym))
+                  (not (byte-code-function-p (symbol-function sym)))
+                  (not (macrop sym)))
+         (message "Byte compiling `%s'" sym)
+         (byte-compile sym))))
+    (message "Byte compilation finished")))
+
+
+;;; DBG macro
+
+(defmacro dbg (&rest forms)
+  (let ((format-str
+         (cl-loop for form in forms
+                  for sep = "" then ", "
+                  concat (format "%s%s=%%s" sep
+                                 (if (and (consp form) (cdr form))
+                                     (format "(%s...)" (car form))
+                                   form)))))
+    `(message ,format-str ,@forms)))
+
+
+;;; Window bottom right poshandler
+
+(defun posframe-poshandler-bz/window-bottom-right-corner (info)
+  (let* ((window-left (plist-get info :parent-window-left))
+         (window-top (plist-get info :parent-window-top))
+         (window-width (plist-get info :parent-window-width))
+         (window-height (plist-get info :parent-window-height))
+         (posframe-width (plist-get info :posframe-width))
+         (posframe-height (plist-get info :posframe-height))
+         (mode-line-height (plist-get info :mode-line-height)))
+    (cons (+ window-left window-width
+             (- 0 12 posframe-width))
+          (+ window-top window-height
+             (- 0 12 mode-line-height posframe-height)))))
+
+
+;;; Purge a library prefix
+
+(defun bz/purge-prefix (prefix)
+  (interactive "sPrefix: ")
+  (let* ((regexp (format "^%s\\>" (regexp-quote prefix)))
+         (pred (lambda (sym) (string-match-p regexp (format "%s" sym)))))
+    (mapatoms
+     (lambda (sym)
+       (when (funcall pred sym)
+         (fmakunbound sym)
+         (makunbound sym))
+
+       ;; Clear symbol properties
+       (cl-loop for (prop _) on (symbol-plist sym) by #'cddr
+                when (funcall pred prop)
+                do (put sym prop nil))))
+
+    (cl-callf2 cl-remove-if pred features)))
+
+
+;;; Provide
+
+(provide 'bz-functions)

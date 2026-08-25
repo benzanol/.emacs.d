@@ -1,10 +1,15 @@
+;; -*- lexical-binding: t; -*-
+
+(require 'bz-base)
+
+
 (defvar bz/switch-window-hook nil)
 
-(setq bz/current-window (selected-window)
-      bz/last-window (selected-window)
-      bz/buffer-history (buffer-list)
-      bz/buffer-history-pos 0
-      bz/buffer-history-pos-modified nil)
+(defvar bz/current-window (selected-window))
+(defvar bz/last-window (selected-window))
+(defvar bz/buffer-history (buffer-list))
+(defvar bz/buffer-history-pos 0)
+(defvar bz/buffer-history-pos-modified nil)
 
 
 ;; After calling bz/buffer-history-back:
@@ -68,3 +73,8 @@
     (setq bz/buffer-history-pos 0)
     (remove-hook 'post-command-hook #'bz/buffer-history-forget-pos)
     (bz/update-window-variables)))
+
+
+;;; Provide
+
+(provide 'bz-buffer-history)

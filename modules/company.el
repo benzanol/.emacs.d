@@ -1,28 +1,42 @@
-(bz/package company)
-(bz/package dash)
+;; -*- lexical-binding: t; -*-
+
+(require 'bz-base)
+
+(require 'company)
+(require 'company-posframe)
+(require 'dash)
+
 
 ;;; Enable globally
+
 (global-company-mode 0)
 
 ;; ...but don't autocomplete
-(setq company-idle-delay nil)
+(setq company-idle-delay 0)
 
 
 ;;; Basic settings
-(setq company-show-numbers t
-      company-minimum-prefix-length 1
-      company-require-match nil
-      company-tooltip-limit 10
-      company-tooltip-margin 1
-      ;; company-idle-delay 0.0
-      ;; company-tooltip-idle-delay 0.0
-      company-tooltip-minimum-width 40
-      company-tooltip-maximum-width 80
-      company-tooltip-width-grow-only t)
+
+(setq-default
+ ;;company-show-numbers t
+ company-show-quick-access t
+ company-minimum-prefix-length 1
+ company-require-match nil
+ company-tooltip-limit 10
+ company-tooltip-margin 1
+ ;; company-idle-delay 0.0
+ ;; company-tooltip-idle-delay 0.0
+ company-tooltip-minimum-width 40
+ company-tooltip-maximum-width 80
+ company-tooltip-width-grow-only t
+ company-abort-on-unique-match nil
+ )
 
 (setq company-frontends '(company-pseudo-tooltip-frontend))
 
+
 ;;; Faces
+
 (bz/face company-tooltip :bg bg3 :fg fg)
 (bz/face company-tooltip-common company-mode)
 (bz/face company-tooltip-selection :bg gray3)
@@ -33,11 +47,13 @@
 (bz/face company-scrollbar-fg :bg gray2)
 (bz/face company-scrollbar-bg company-tooltip)
 
+
 ;;; Keybindings
+
 (bz/keys company-active-map
   :sparse t
   "<tab>" company-complete-selection
-  "<M-tab>" company-complete-selection
+  ;; "<M-tab>" company-complete-selection
   "<backtab>" company-complete-common
   "C-g" company-abort
   "C-j" company-next-page
@@ -54,14 +70,21 @@
   "C-p" bz/company-posframe-quickhelp-show-or-focus)
 
 (bz/keys company-mode-map
-  "<M-tab>" company-complete)
+  :sparse t
+  ;; "M-<tab>" company-complete
+  )
+
+(bz/keys bz/insert-map
+  "M-<tab>" company-complete)
 
 ;; Bind Alt+n to the nth completion
 (dotimes (i 10)
   (define-key company-active-map (kbd (format "M-%s" (% (1+ i) 10)))
-    (eval `(lambda () (interactive) (company--complete-nth ,i)))))
+              (eval `(lambda () (interactive) (company--complete-nth ,i)))))
+
 
 ;;; Company posframe
+
 (when (display-graphic-p)
   (bz/package company-posframe)
   (company-posframe-mode 1)
@@ -91,14 +114,19 @@
                 (if (< (+ (cdr pos) (* 2 h)) (frame-pixel-height)) (+ (cdr pos) h)
                   (- (cdr pos) (frame-pixel-height posframe--frame) 40))))))))
 
+
 ;;; Disable yasnippets
+
 (bz/hook company-after-completion-hook bz/kill-yasnippet
   (when mark-active (delete-region (point) (mark)))
   (ignore-errors (yas/exit-all-snippets)))
 
+
 ;;; Autocomplete
 
-(setq-default company-idle-delay nil)
+(setq-default company-idle-delay 0.01)
+;; (setq-default company-idle-delay 1)
+;; (setq-default company-idle-delay 0.5)
 
 (defun bz/company-autocomplete-mode (&optional arg)
   (interactive)
@@ -106,7 +134,7 @@
   (if (or (eq arg 0) (and (null arg) company-idle-delay))
       (progn (setq-local company-idle-delay nil)
              (message "Autocomplete disabled"))
-    (setq-local company-idle-delay 0.1)
+    (setq-local company-idle-delay 0.01)
     (message "Autocomplete enabled")))
 
 (bz/advise :remove bz/normal company-abort)
@@ -127,10 +155,18 @@
 (defun company-posframe-quickhelp-hide ()
   (unless (memq this-command '(bz/company-posframe-quickhelp-show-or-focus))
     (posframe-hide company-posframe-quickhelp-buffer)))
+
+
 ;;; Don't delete suffix
+
 ;; (bz/advise :around company-complete-common bz/company-keep-suffix (func &rest args)
 ;;   (message "Advising")
 ;;   (newline)
 ;;   (backward-char)
 ;;   (apply func args)
 ;;   (delete-forward-char))
+
+
+;;; Provide
+
+(provide 'bz-company)

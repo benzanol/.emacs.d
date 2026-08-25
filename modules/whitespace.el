@@ -1,4 +1,5 @@
-;;; Whitespace Mode
+;;; Whitespace Mode  -*- lexical-binding: t; -*-
+
 (bz/package whitespace)
 
 (bz/hook prog-mode-hook whitespace-mode)
@@ -7,6 +8,8 @@
       '((space-mark ?\s [?·])
         (tab-mark ?\t [?» ?\t])
         (newline-mark ?\n [?\n])))
+
+(setq nobreak-char-display nil)
 
 (bz/face whitespace-indentation :fg gray4 :bg nil)
 (bz/face whitespace-space :fg gray4 :bg nil)
@@ -27,3 +30,8 @@
 
 (bz/face whitespace-trailing bz/whitespace-error :fg nil :bg nil)
 (bz/face whitespace-missing-newline-at-eof bz/whitespace-error :fg nil :bg nil)
+
+
+;;; Provide
+
+(provide 'bz-whitespace)

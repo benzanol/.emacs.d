@@ -1,17 +1,23 @@
 ;; -*- lexical-binding:t -*-
 
-(bz/package dired)
+(require 'bz-base)
+(require 'bz-functions)
+(require 'bz-tabline)
 
-(bz/require tabline)
+(require 'dired)
+(require 'f)
+(require 'openwith)
+(require 'wdired)
 
 
 ;;; Settings
+
 (setq dired-listing-switches "-lvA  --group-directories-first")
 
 (setq dired-recursive-deletes 'always)
 
 ;; Mark files with an exclamation point, and highlight them
-(setq dired-marker-char ?!)
+;; (setq dired-marker-char ?!)
 (push (list (concat "^[" (char-to-string dired-marker-char) "]")
             '(".+" (dired-move-to-filename) nil (0 dired-marked-face)))
       dired-font-lock-keywords)
@@ -39,18 +45,33 @@
 
 
 ;;; Keybindings
+
 (bz/package f)
 
 (bz/keys dired-mode-map
   :sparse t
-  [remap bz/down] dired-next-line
-  [remap bz/up] dired-previous-line
-  [remap bz/left] dired-subtree-remove
-  [remap bz/right] dired-subtree-insert
+  "j" (@ bz/dired-down (dired-next-line 1))
+  "k" (@ bz/dired-up (dired-previous-line 1))
+  "J" (@ bz/dired-down4 (dired-next-line 4))
+  "K" (@ bz/dired-up4 (dired-previous-line 4))
+  "v" bz/visual-line
+  "/" bz/search-forward
+  "?" bz/search-backward
+  "n" bz/search-repeat-forward
+  "N" bz/search-repeat-backward
+  "g" ,bz/g-map
+  ;; "f" ,bz/f-map
+
+  "h" dired-subtree-remove
+  "l" dired-subtree-insert
+
+  "F" find-dired
+  "C-d" bz/dired-standard-mode
+  "C-w" wdired-change-to-wdired-mode
 
   "RET" bz/dired-open
   "<S-return>" dired-find-file
-  "e" (@ bz/dired-up (bz/dired-open (f-parent default-directory)))
+  "`" (@ bz/dired-up-directory (bz/dired-open (f-parent default-directory)))
   "!" (@ bz/dired-shell-command-on-file
          (let ((default-directory (dired-current-directory)))
            (call-interactively #'dired-do-shell-command)))
@@ -63,14 +84,23 @@
   "P" emms-play-dired
   "." bz/dired-show-hidden
 
-  "s" (bz/dired-clipboard 'move)
+  "s" (@ bz/dired-rename (bz/dired-clipboard 'move))
   "S" dired-do-rename
-  "y" (bz/dired-clipboard 'copy)
+  "y" (@ bz/dired-copy (bz/dired-clipboard 'copy))
   "Y" dired-do-copy
-  "x" (bz/dired-clipboard 'symlink)
+  "x" (@ bz/dired-symlink (bz/dired-clipboard 'symlink))
   "X" dired-do-symlink
   "p" bz/dired-paste
   "d" bz/dired-delete
+  "D" (@ bz/dired-dissolve
+         (when-let* ((dir (dired-file-name-at-point))
+                     ((file-directory-p dir))
+                     (parent (file-name-parent-directory (directory-file-name dir)))
+                     ((y-or-n-p (format "Dissolve directory %s? " dir))))
+           (dolist (file (directory-files dir t directory-files-no-dot-files-regexp))
+             (rename-file file (expand-file-name (file-name-nondirectory file) parent)))
+           (delete-directory dir)
+           (revert-buffer)))
 
   "m" (bz/dired-toggle-mark 1)
   "M" ((dired-unmark-all-marks) (dired-toggle-marks))
@@ -87,25 +117,79 @@
 
   "SPC" dired-subtree-toggle
   "o" (@ bz/dired-subtree-open-all
-         (save-excursion
-           (end-of-buffer)
-           (while (> (line-number-at-pos nil) 1)
-             (dired-subtree-insert) (previous-line 1))))
+         (when-let* ((ols (sort (overlays-at (point))
+                                :key (lambda (ol &rest _) (or (overlay-get ol 'dired-subtree-depth) -1))))
+                     (ol (car (last ols)))
+                     (start (overlay-start ol)))
+           (save-excursion
+             (goto-char (1- (overlay-end ol)))
+             (while (>= (point) start)
+               (dired-subtree-insert) (forward-line -1)))))
   "O" (@ bz/dired-subtree-close-all
-         (save-excursion
-           (end-of-buffer)
-           (while (> (line-number-at-pos nil) 1)
-             (dired-subtree-remove) (previous-line 1)))))
+         (when-let* ((ols (sort (overlays-at (point))
+                                :key (lambda (ol &rest _) (or (overlay-get ol 'dired-subtree-depth) -1))))
+                     (ol (car (last ols)))
+                     (start (overlay-start ol)))
+           (save-excursion
+             (goto-char (1- (overlay-end ol)))
+             (while (> (point) start)
+               (if (> (length (overlays-at (point))) (length ols))
+                   (dired-subtree-remove)
+                 (forward-line -1)))))))
+
+
+;;; Standard vs filetree mode
+
+(defun bz/dired-filetree-mode ()
+  (interactive)
+  (display-line-numbers-mode 0)
+  (dired-hide-details-mode 1)
+  (variable-pitch-mode 1)
+  (all-the-icons-dired-mode 1)
+
+  (use-local-map dired-mode-map)
+  (bz/navigate))
+
+(bz/keys bz/dired-standard-mode-map
+  :doc "Keymap for dired standard mode"
+  :sparse t
+  "C-d" bz/dired-filetree-mode)
+
+(defun bz/dired-standard-mode ()
+  (interactive)
+  (display-line-numbers-mode 1)
+  (dired-hide-details-mode 0)
+  (variable-pitch-mode 0)
+  (all-the-icons-dired-mode 0)
+
+  (use-local-map bz/dired-standard-mode-map)
+  (bz/normal))
+
+
+;;; Wdired
+
+(bz/hook wdired-mode-hook bz/wdired-setup
+  (variable-pitch-mode 0)
+  (bz/normal))
+
+(bz/advise :after wdired-change-to-dired-mode bz/wdired-cleanup (&rest _)
+  (variable-pitch-mode 1)
+  (bz/navigate)
+  (run-with-timer 0 nil (lambda (b) (with-current-buffer b (revert-buffer)))
+                  (current-buffer)))
+
+(bz/keys wdired-mode-map
+  "C-w" wdired-abort-changes)
+
 
 ;;; Setup
-
 
 (setq bz/dired-chronological-directories
       '("~/Downloads" "~/Downloads/save" "~/Downloads/webpages" "~/Media/Images"))
 
 (bz/hook dired-mode-hook bz/dired-setup
   (setq-local truncate-lines t
-              window-size-fixed nil ; 'width
+              window-size-fixed 'width
               line-spacing 0.1)
 
   (let ((sorting-by-date (string-match-p dired-sort-by-date-regexp dired-actual-switches))
@@ -117,24 +201,26 @@
   (let* ((buf (current-buffer))
          (fn (lambda () (with-current-buffer buf (bz/dired-truncate-title)))))
     (run-with-timer 0 nil fn))
-  (dired-hide-details-mode 1)
-  (display-line-numbers-mode 0)
-  (variable-pitch-mode 1)
-  (all-the-icons-dired-mode)
+
   (auto-revert-mode 1)
+
+  (bz/dired-filetree-mode)
 
   ;; By default, the buffer name shows up as error face, weirdly even if the window
   ;; isn't focused, in which case it should use the inactive face
   (when doom-modeline-mode
     (setq-local mode-line-format '("%e" (:eval (doom-modeline-format--main)))))
 
-  (rename-buffer
-   (format "Dired: %s"
-           (replace-regexp-in-string
-            (concat "^" (regexp-quote (expand-file-name "~"))) "~"
-            dired-directory))))
+  (ignore-errors
+    (rename-buffer
+     (format "Dired: %s"
+             (replace-regexp-in-string
+              (concat "^" (regexp-quote (expand-file-name "~"))) "~"
+              dired-directory)))))
+
 
 ;;; Launching
+
 (defun bz/dired (&optional arg)
   (interactive "p")
   (let ((default-directory (if arg default-directory (expand-file-name "~"))))
@@ -142,7 +228,9 @@
 
 ;; (bz/keys * "C-x d" bz/dired)
 
+
 ;;; All the Icons
+
 (bz/package all-the-icons)
 (bz/package all-the-icons-dired)
 
@@ -151,7 +239,9 @@
 
 (bz/face all-the-icons-dired-dir-face dired-directory :fg nil)
 
+
 ;;; Subtree
+
 (bz/package dired-subtree)
 
 ;; Can't be 4 spaces, because otherwise weird indent guides show up on 2nd space
@@ -169,8 +259,12 @@
 (bz/face dired-subtree-depth-4-face :bg nil)
 (bz/face dired-subtree-depth-5-face :bg nil)
 (bz/face dired-subtree-depth-6-face :bg nil)
+(bz/face dired-subtree-depth-7-face :bg nil)
+(bz/face dired-subtree-depth-8-face :bg nil)
+
 
 ;;; Openwith
+
 (bz/package openwith)
 (openwith-mode 1)
 
@@ -187,6 +281,11 @@
         (,(openwith-make-extension-regexp
            '("pdf"))
          "evince" (file))))
+
+;; Openwith throws an error when it opens a file externally to trigger a non-local exit
+(bz/advise :around openwith-file-handler bz/openwith-around-advice (func &rest args)
+  (let ((debug-on-error nil))
+    (apply func args)))
 
 (bz/advise :around files--ask-user-about-large-file
            bz/openwith-ask-about-large-file-advice (func size op-type filename offer-raw)
@@ -245,11 +344,16 @@ file literally."
 
 ;; Has the format (action files...)
 ;; Action can be move, copy, or symlink
-(setq bz/dired-clipboard nil)
+(defvar bz/dired-clipboard nil)
 
 (defun bz/dired-clipboard (action)
   (interactive (list (intern (completing-read "Action: " '(move copy symlink)))))
-  (setq bz/dired-clipboard (cons action (dired-get-marked-files)))
+  (setq bz/dired-clipboard
+        (cons action
+              (if (and (eq (line-number-at-pos) 1)
+                       (null (dired-get-marked-files)))
+                  (list (directory-file-name dired-directory))
+                (dired-get-marked-files))))
 
   (message "%s %s %s"
            (pcase action ('copy "Copying") ('move "Moving") ('symlink "Symlinking"))
@@ -272,14 +376,29 @@ file literally."
                  (y-or-n-p (format "File `%s` already exists here. Overwrite it? " name))))
 
         (pcase action
-          ('move (start-process "mv" nil "mv" file dir))
-          ('copy (start-process "cp" nil "cp" "-rf" file dir))
-          ('symlink (start-process "ln" nil "ln" "-s" file dir))))))
+          ('move
+           (cond ((file-directory-p file)
+                  (message "DIR %s" dir)
+                  (let* ((expanded-old (expand-file-name file))
+                         (old-parent-len (length (file-name-as-directory (f-parent expanded-old)))))
+                    ($$ "mv %s %s" file dir)
+                    (dolist (buf (buffer-list))
+                      (with-current-buffer buf
+                        (when (and buffer-file-name (s-starts-with-p expanded-old buffer-file-name))
+                          (set-visited-file-name (f-join dir (substring buffer-file-name old-parent-len)))
+                          (set-buffer-modified-p nil))))))
+                 ((find-buffer-visiting file)
+                  (with-current-buffer (find-buffer-visiting file)
+                    (bz/move-buffer-file (f-join dir (file-name-nondirectory file)))))
+                 (t ($$ "mv %s %s" (expand-file-name file) (expand-file-name dir)))))
+          ('copy ($$ "cp -rf %s %s" (expand-file-name file) (expand-file-name dir)))
+          ('symlink ($$ "ln -s %s %s" (expand-file-name file) (expand-file-name dir)))))))
 
-  (when (derived-mode-p 'dired-mode) (revert-buffer)))
+  (when (derived-mode-p 'dired-mode) (run-with-timer 0.1 nil #'dired-revert)))
 
 
 ;;;; Truncate title
+
 (bz/advise :after dired-revert bz/dired-truncate-title (&rest args)
   (let ((inhibit-read-only t)
         prev)
@@ -297,7 +416,9 @@ file literally."
         (when prev (put-text-property prev (match-beginning 0) 'invisible t))
         (setq prev (point))))))
 
+
 ;;;; Hidden Files
+
 (setq dired-listing-switches "-lvA  --group-directories-first")
 (defvar bz/dired-showing-hidden t)
 (defun bz/dired-show-hidden (&optional arg)
@@ -318,16 +439,23 @@ file literally."
   ;; Forcibly create a new buffer (will remove subtrees)
   (bz/dired-open default-directory))
 
-;;;; Changing Directory
+
+;;;; Open
+
 (defun bz/dired-open (&optional file)
   (interactive)
   (unless file (setq file (dired-get-filename)))
   (if (not (file-directory-p file))
-      (display-buffer (find-file-noselect file))
+      (progn (select-window (or (window-in-direction 'right nil nil 1)
+                                (window-in-direction 'left nil nil 1)
+                                (selected-window)))
+             (find-file file))
     (kill-buffer (current-buffer))
     (dired file)))
 
+
 ;;;; Toggle mark
+
 (defun bz/dired-toggle-mark (&optional arg)
   "Toggle whether the current file is marked.
 If arg is negative or zero, disable the mark. If arg is positive,
@@ -344,14 +472,22 @@ the region."
                                     (line-number-at-pos (max (point) (mark)))))
           (deactivate-mark) (goto-line i) (bz/dired-toggle-mark (if mark 1 0)))
       (if mark (dired-mark 1) (dired-unmark 1))
-      (previous-line) (dired-move-to-filename))))
+      (forward-line -1) (dired-move-to-filename))))
+
 
 ;;;; Mark files in region
+
 (bz/advise :before dired-get-marked-files bz/dired-add-region-files (&rest args)
   "Add files in the region to the list of marked files."
-  (when mark-active (bz/dired-toggle-mark 1)))
+  (cond (mark-active
+         (dired-unmark-all-marks)
+         (bz/dired-toggle-mark 1))
+        ((not (eq (get-text-property (point) 'face) 'dired-marked))
+         (dired-unmark-all-marks))))
+
 
 ;;;; Include file name when renaming
+
 (bz/advise :override dired-mark-read-file-name bz/* (prompt dir op-symbol arg files &optional default)
   (dired-mark-pop-up
    nil op-symbol files
@@ -359,3 +495,29 @@ the region."
    (format prompt (dired-mark-prompt arg files)) dir default nil
    ;; Include the default name as the intial input
    (file-name-nondirectory default)))
+
+
+;;; Forcibly abbreviate symlinks
+
+(defun bz/filename-initials (filename)
+  (replace-regexp-in-string "\\.?\\([^/.]\\)[^/]+/" "\\1/" filename))
+
+(bz/hook (dired-subtree-after-insert-hook dired-after-readin-hook) bz/dired-abbreviate-symlinks
+  (let ((inhibit-read-only t))
+    (save-excursion
+      (goto-char (point-min))
+      (while (re-search-forward " -> \\(/[^\n]+\\)" nil t)
+        (let* ((target (match-string 1))
+               (start (match-beginning 1))
+               (end (match-end 1))
+               (parent (file-name-parent-directory (dired-get-filename)))
+               (abbreviated (bz/filename-initials (file-relative-name target parent))))
+          (unless (string= target abbreviated)
+            (delete-region start end)
+            (goto-char start)
+            (insert abbreviated)))))))
+
+
+;;; Provide
+
+(provide 'bz-dired)

@@ -1,8 +1,14 @@
 ;;; multiplecursors2 --- Multiple cursors but better -*- lexical-binding: t; -*-
 
-(bz/package dash)
+(require 'bz-base)
+(require 'bz-functions)
+
+(require 'dash)
+(require 'ox)
+
 
 ;;; Variables
+
 (bz/face mc2-cursor :bg purple :fg bg)
 
 (defvar-local mc2-mode nil
@@ -42,50 +48,16 @@ invokes another command, run that command for all cursors.")
 before running the command, and then hidden again after running
 the command. For these commands, don't bother doing this.")
 
-;;; Keymap
+(defvar mc2-cursor-results nil
+  "Execution result for each cursors.")
 
-(bz/keys mc2-minor-mode-map
-  :sparse t
-  "C-f" mc2-all ; F for Forall? idk man
-  "C-q" mc2-disable
-  "C-o" mc2-one
-  "C-s" mc2-none
-
-  "C-d" mc2-delete-cursor
-  "C-a" mc2-add-cursor
-  "C-w" mc2-add-next-word
-
-  "C-," mc2-add-previous-match
-  "C-." mc2-add-next-match
-  "C-<" mc2-add-previous-word-match
-  "C->" mc2-add-next-word-match
-  "C-M-," mc2-add-previous-skip
-  "C-M-." mc2-add-next-skip
-  "C-M-<" mc2-add-previous-word-skip
-  "C-M->" mc2-add-next-word-skip
-
-  "C-j" mc2-forward-cursor
-  "C-k" mc2-backward-cursor)
-
-(bz/keys mc2-prefix-map
-  :sparse t
-  :parent mc2-minor-mode-map
-  "C-v" mc2-all
-  "C-x" mc2-add-all-matches
-  "C-c" mc2-condensed-mode
-  "C-r" mc2-insert-range
-  "C-l" mc2-remember-case
-  "C-S-l" mc2-forget-case
-  "C-SPC" mc2-align-cursors
-  "<C-return>" mc2-add-next-line)
-
-(bz/key * "C-v" ,mc2-prefix-map)
-
-(push (cons 'mc2-mode mc2-minor-mode-map)
-      minor-mode-map-alist)
+(defvar mc2-char-case nil
+  "The capitalization type of each cursor.
+Can be one of `nil', `upper', `lower'.")
 
 
 ;;; Minor modes
+
 (defun mc2-enable ()
   "Reset all variables and enter the default multicursors mode."
   (interactive)
@@ -138,6 +110,7 @@ the command. For these commands, don't bother doing this.")
   (unless mc2-mode (mc2-enable))
   (setq mc2-mode 'none))
 
+
 ;;; Hide unmatched lines
 
 (define-minor-mode mc2-condensed-mode
@@ -165,8 +138,8 @@ the command. For these commands, don't bother doing this.")
       (while (cdr lines)
         (setq l1 (pop lines) l2 (car lines))
         (when (> (- l2 l1) 2)
-          (setq o (make-overlay (progn (goto-line (+ 1 l1)) (point))
-                                (progn (goto-line (- l2 0)) (1- (point)))))
+          (setq o (make-overlay (progn (goto-char (point-min)) (forward-line l1) (point))
+                                (progn (goto-char (point-min)) (forward-line (1- l2)) (1- (point)))))
           (overlay-put o 'mc2 t)
           (overlay-put o 'mc2-unmatched t)
           (overlay-put o 'invisible t)
@@ -257,7 +230,11 @@ remaining cursors."
 
     (setq mc2-cursor-number nil)))
 
+
 ;;; Remembering args
+
+(defvar-local mc2-this-command-args nil
+  "Argument list used for the last command.")
 
 (defun mc2-this-command ()
   "The current raw command executed by `command-execute`")
@@ -265,9 +242,6 @@ remaining cursors."
 (defun mc2-remember-args-advice (args)
   (setq mc2-this-command-args args))
 
-
-(defvar-local mc2-this-command-args nil
-  "Argument list used for the last command.")
 
 (defun mc2-execute-this-command ()
   "Hack to call the current command with advice."
@@ -315,8 +289,7 @@ ARGS are the arguments to pass to the function. "
          (vals (mapcar 'symbol-value vars))
          (win-layout (window-tree))
          (buf-contents (buffer-string))
-         (old-vs (overlay-get o 'mc2-vars))
-         (new-vs nil))
+         (old-vs (overlay-get o 'mc2-vars)))
 
     ;; Prepare and execute the current cursor
     (mc2-setup-cursor o)
@@ -335,7 +308,7 @@ ARGS are the arguments to pass to the function. "
      ;; Don't run unless something has changed about the buffer, or
      ;; mc2-always-execute-all says to run regardless
      (or mc2-always-execute-all
-         (not (equal old-vs (setq new-vs (mc2-collect-vars))))
+         (not (equal old-vs (mc2-collect-vars)))
          (not (eq (overlay-start o) (point)))
          (not (string= buf-contents (buffer-string))))
 
@@ -441,6 +414,7 @@ ARGS are the arguments to pass to the function. "
           (overlay-put o 'face (nth 0 props))
           (overlay-put o 'before-string (nth 1 props)))))))
 
+
 ;;; Adding cursors
 
 (defun mc2-add-cursor (&optional pos mark)
@@ -488,7 +462,7 @@ ARGS are the arguments to pass to the function. "
   (mc2-add-cursor
    (save-excursion
      (goto-char (overlay-start (car mc2-cursors)))
-     (next-line) (point))))
+     (forward-line) (point))))
 
 (defun mc2-add-lines (col beg end)
   "Add a new cursor on each line of the region."
@@ -513,6 +487,7 @@ ARGS are the arguments to pass to the function. "
 
 
 ;;; Adding by selection
+
 (defun mc2-add-next-word ()
   (interactive)
   (forward-word)
@@ -520,7 +495,7 @@ ARGS are the arguments to pass to the function. "
 
 (defun mc2-add-next-match (text &optional regexp back)
   (interactive (list (buffer-substring (point) (mark))))
-  (unless mark-active (error "No active selection"))
+  (unless mark-active (user-error "No active selection"))
 
   ;; Make sure the point is ahead of the mark
   (when (and mark-active (> (mark) (point)))
@@ -529,9 +504,9 @@ ARGS are the arguments to pass to the function. "
   (unless mc2-mode (mc2-add-cursor))
 
   ;; Figure out which function to use for searching
-  (let ((search-func (if back (if regexp 'search-backward-regexp 'search-backward)
-                       (if regexp 'search-forward-regexp 'search-forward)))
-        cycled success pos)
+  (let ((search-func (if back (if regexp #'search-backward-regexp #'search-backward)
+                       (if regexp #'search-forward-regexp #'search-forward)))
+        cycled success)
 
     ;; Keep searching forward until finding a match without an existing cursor
     (save-excursion
@@ -539,16 +514,19 @@ ARGS are the arguments to pass to the function. "
                         (or (funcall search-func text nil 'noerror)
                             (and (not cycled)
                                  (progn (setq cycled t)
-                                        (beginning-of-buffer)
+                                        (goto-char (point-min))
                                         (funcall search-func text nil 'noerror)))))
                   (mc2-cursor-at-pos (match-end 0)))))
 
     ;; Make sure it found a valid match without a cursor
-    (if (not success)
-        (error "No more matches found: `%s`" text)
+    (if (not success) (user-error "No more matches found: `%s`" text)
 
       (goto-char (match-beginning 0))
       (mc2-add-cursor (match-end 0) (match-beginning 0))
+      (dolist (ol (overlays-in (match-beginning 0) (match-end 0)))
+        (when (overlay-get ol 'invisible)
+          (overlay-put ol 'mc2-invisible (overlay-get ol 'invisible))
+          (overlay-put ol 'invisible nil)))
       (mc2-all))))
 
 (defun mc2-add-previous-match (text)
@@ -589,37 +567,49 @@ ARGS are the arguments to pass to the function. "
     (mc2-delete-cursor c)))
 
 
+;;; Add all matches
+
+(defun mc2-add-all-word-matches (string)
+  (interactive (list (buffer-substring
+                      (point) (if mark-active (mark) (forward-sexp) (point)))))
+  (mc2-add-all-matches (format "\\<%s\\>" (regexp-quote string)) 'REGEXP))
+
 (defun mc2-add-all-matches (text &optional regexp beg end)
   (interactive
    (list (buffer-substring
-          (point) (if mark-active (mark) (1+ (point))))))
+          (point) (if mark-active (mark) (forward-sexp) (point)))))
+
+  (unless regexp
+    (setq text (regexp-quote text)))
 
   (mc2-disable)
 
   ;; Figure out which function to use for searching
-  (let ((search-func (if regexp 'search-forward-regexp 'search-forward))
-        (active mark-active)
+  (let ((active mark-active)
         (p (point)) (m (mark)))
 
     ;; Go to the start of the search region
     (goto-char (or beg (point-min)))
 
     ;; Keep searching forward until finding a match without an existing cursor
-    (while (funcall search-func text end 'noerror)
+    (while (search-forward-regexp text end 'NOERR)
       (let ((mark-active active))
         (mc2-add-cursor (point) (match-beginning 0))))
 
     ;; Try to get the cursor at the original location
-    (unless (null mc2-cursors)
-      (mc2-select-cursor
-       (or (mc2-cursor-at-pos p)
-           (mc2-cursor-at-pos m)
-           (car mc2-cursors))))
+    (goto-char p)
+    (cond ((null mc2-cursors))
+          ((eq 1 (length mc2-cursors)) (mc2-disable))
+          (t
+           (mc2-select-cursor
+            (or (mc2-cursor-at-pos p)
+                (mc2-cursor-at-pos m)
+                (car mc2-cursors)))
+           (mc2-all)))))
 
-    ;; Select all cursors
-    (mc2-all)))
 
 ;;; Adding by search
+
 (defun mc2-add-search (text)
   (interactive "sAdd matches: ")
   (if (not mark-active) (mc2-add-all-matches text)
@@ -632,7 +622,8 @@ ARGS are the arguments to pass to the function. "
   (if (not mark-active) (mc2-add-all-matches text 'regexp)
     (let ((beg (min (mark) (point))) (end (max (mark) (point))))
       (deactivate-mark)
-      (mc2-add-all-matches text 'regexp beg end))))
+      (mc2-add-all-matches text 'REGEXP beg end))))
+
 
 ;;; Remove cursor
 
@@ -643,6 +634,11 @@ ARGS are the arguments to pass to the function. "
   (setq c (or c (and (eq mc2-mode 'none)
                      (mc2-cursor-at-pos))
               (car mc2-cursors)))
+
+  ;; Re-enable invisible overlays
+  (let ((m (overlay-get c 'mc2-mark-overlay)))
+    (dolist (ol (overlays-in (overlay-start m) (overlay-end m)))
+      (overlay-put ol 'invisible (overlay-get ol 'mc2-invisible))))
 
   ;; Remove the cursor from the list and delete the overlay
   (delete-overlay (overlay-get c 'mc2-mark-overlay))
@@ -658,6 +654,7 @@ ARGS are the arguments to pass to the function. "
   (dolist (c mc2-cursors)
     (when (= (overlay-start c) (point))
       (mc2-delete-cursor c))))
+
 
 ;;; Cycling cursors
 
@@ -706,9 +703,8 @@ ARGS are the arguments to pass to the function. "
   (interactive "P")
   (mc2-cycle-cursors (if (numberp n) (- n) -1)))
 
-;;; Conditional Capitalization
 
-(defvar mc2-char-case nil "nil | upper | lower")
+;;; Conditional Capitalization
 
 (bz/advise :around self-insert-command mc2-self-insert-advice (cmd n &optional char)
   (cond ((or (null mc2-char-case) (not (numberp char))) (funcall cmd n char))
@@ -732,6 +728,7 @@ ARGS are the arguments to pass to the function. "
 
 
 ;;; Miscellaneous
+
 (defun mc2-cursor-at-pos (&optional pos)
   "Get the cursor at point, or the position POS."
   (--first (= (overlay-start it) (or pos (point)))
@@ -750,7 +747,7 @@ arg sets the starting number to 0."
   (interactive "P")
   (let ((n (or mc2-cursor-number 0)))
     (pcase arg
-      ('(4) (insert (aref alphabet n)))
+      ('(4) (insert (aref "abcdefghijklmnopqrstuvwxyz" n)))
       ('(16) (insert (downcase (org-export-number-to-roman (1+ n)))))
       ((guard (or (null arg) (numberp arg)))
        (insert (number-to-string (+ n (or arg 1))))))))
@@ -767,3 +764,8 @@ arg sets the starting number to 0."
         (goto-char (overlay-start c))
         (insert (make-string (- max (current-column))
                              (or char ?\s)))))))
+
+
+;;; Provide
+
+(provide 'bz-multicursors2)

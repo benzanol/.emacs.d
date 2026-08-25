@@ -1,4 +1,12 @@
-(bz/package fill-column-indicator)
+;; -*- lexical-binding: t; -*-
 
-(setq fci-rule-column 67
-      fci-rule-color (bz/color gray2))
+(require 'fill-column-indicator)
+
+
+(setq fci-rule-column 100
+      fci-rule-color "#646870")
+
+
+;;; Provide
+
+(provide 'bz-fci)

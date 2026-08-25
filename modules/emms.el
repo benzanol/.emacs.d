@@ -1,3 +1,4 @@
+;; -*- lexical-binding: t; -*-
 (bz/package emms)
 
 (setq emms-directory (expand-file-name "~/.emacs.d/.cache/emms"))
@@ -7,9 +8,9 @@
 (emms-mode-line-mode 0)
 
 (bz/keys *
-  "C-x C-p C-p" emms-pause)
+  "C-x C-p C-e" emms-pause)
 
-(bz/hook emms-playlist-mode-hook nil
+(bz/hook emms-playlist-mode-hook bz/disable-line-numbers
   (display-line-numbers-mode 0))
 
 (bz/face emms-playlist-track-face)
@@ -88,3 +89,8 @@
     (+ (* 3600 (string-to-number (nth 0 split)))
        (* 60 (string-to-number (nth 1 split)))
        (string-to-number (nth 2 split)))))
+
+
+;;; Provide
+
+(provide 'bz-emms)

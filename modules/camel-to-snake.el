@@ -1,3 +1,5 @@
+;;  -*- lexical-binding: t; -*-
+
 (define-minor-mode camel-to-snake-mode
   "Converts camel case to snake case in real time.
 
@@ -18,3 +20,8 @@ letter, so that it will not disrupt typing of upper camel case."
                  (looking-at-p "_*[a-z]")))
       (delete-backward-char 1)
       (insert "_" (downcase (this-command-keys))))))
+
+
+;;; Provide
+
+(provide 'bz-camel-to-snake)

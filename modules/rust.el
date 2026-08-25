@@ -1,18 +1,32 @@
-;;; Snippets
+;;; Snippets  -*- lexical-binding: t; -*-
+
+(require 'bz-camel-to-snake)
+
+
+(bz/keys rust-mode-map
+  :sparse t)
+
+(bz/face rust-question-mark error)
+(bz/face rust-ampersand-face :inherit nil)
+
+(bz/hook rust-mode-hook bz/rust-mode-setup
+  (setq-local outline-regexp "// ==")
+  (setq-local outline-heading-alist '(("// ==" . 1)))
+
+  (apheleia-mode 1))
 
 (setf (alist-get 'rust-mode bz/snippet-mode-alist)
       '(
         ("a" "'a")
         ("S" "'static")
-        ("p 1" "println!(\"{:?}\", );" -2)
-        ("p 2" "println!(\"{:?} {:?}\", );" -2)
-        ("p 3" "println!(\"{:?} {:?} {:?}\", );" -2)
-        ("P" "println!(\"{}\", );" -2)
-        ("D" "println!(\"{:?}\", );" -2)
+        ("p 1" "println!(\"{:?}\", <<>>);")
+        ("p 2" "println!(\"{:?} {:?}\", <<>>);")
+        ("p 3" "println!(\"{:?} {:?} {:?}\", <<>>);")
+        ("P" "println!(\"{}\", <<>>);")
+        ("D" "println!(\"{:?}\", <<>>);")
         ;; Print multiline string
-        ("p m s" "println!(\"{}\", .iter().map(|line| line.iter().join(\"\")).join(\"\\n\"));" 15)
+        ("p m s" "println!(\"{}\", <<>>.iter().map(|line| line.iter().join(\"\")).join(\"\\n\"));")
         ))
-
 
 
 ;;; Cargo install
@@ -51,3 +65,16 @@
 
         (setq path (butlast path))
         (unless path (error "No cargo file found!"))))))
+
+
+;;; Font lock
+
+(bz/font-lock-add-keywords
+ 'rust-mode
+ '(("\\<\\(impl\\)\\>"
+    (1 '(font-lock-function-name-face bold)))))
+
+
+;;; Provide
+
+(provide 'bz-rust)

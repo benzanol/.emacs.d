@@ -1,4 +1,9 @@
-(bz/package flyspell)
+;; -*- lexical-binding: t; -*-
+
+(require 'bz-base)
+
+(require 'flyspell)
+
 
 (bz/hook prog-mode-hook bz/flyspell-prog-mode
   (flyspell-prog-mode)
@@ -29,3 +34,8 @@
   :sparse t
   [remap bz/spell-check] ispell-word
   [remap bz/spell-actions] ,bz/flyspell-actions-map)
+
+
+;;; Provide
+
+(provide 'bz-spelling)

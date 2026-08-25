@@ -1,45 +1,57 @@
-;;; Settings
+;; -*- lexical-binding: t; -*-
 
-(setq org-preview-latex-image-directory "~/.ltximg/")
+(require 'bz-base)
 
-(plist-put org-format-latex-options :scale 1.5)
-;; (plist-put org-format-latex-options :scale 3)
 
-(setq-default org-highlight-latex-and-related '(native))
-;; Make it so you can have spaces between single dollar signs
+(add-to-list 'load-path "~/.emacs.d/my-packages/asynctex")
+(require 'asynctex)
 
-(bz/face font-latex-math-face :bg bg :x t)
-;; (bz/face org-block fixed-pitch :bg bg :h 0.9)
 
-;;; Toggling
+(setq asynctex-preview-scale 1.3)
 
-(defvar bz/latex-enabled t)
-(defun bz/toggle-latex (&optional arg)
-  (interactive)
-  (setq-local bz/latex-enabled
-              (if (numberp arg)
-                  (if (eq arg 0) bz/latex-enabled
-                    (if (< arg 0) nil t))
-                (not bz/latex-enabled)))
-  (if bz/latex-enabled
-      (org-latex-preview '(16))
-    (org-latex-preview '(64))))
+;; Syntax highlighting for latex snippets
+(setq org-highlight-latex-and-related '(native))
 
-(bz/package org-fragtog)
+(bz/hook org-mode-hook asynctex-auto-mode)
 
 (bz/keys org-mode-map
   "C-c C-l" nil
-  "C-c C-l C-l" ((org-latex-preview '(16)) (org-fragtog-mode 0))
-  "C-c C-l C-o" ((org-latex-preview '(64)) (org-fragtog-mode 0))
-  "C-c C-l C-f" ((org-latex-preview '(16)) (org-fragtog-mode 1))
-  "C-c C-l C-t" bz/toggle-latex
+  "C-c C-l C-p" asynctex-org-queue-at-point
+  "C-c C-l C-f" asynctex-auto-mode
+  "C-c C-l C-l" asynctex-org-queue-new
+  "C-c C-l C-o" asynctex-remove-all
 
-  "C-l" bz/toggle-latex
+  "M-\\" (@ bz/insert-latex-fragment
+            (if (and (looking-back "\\$" 1) (looking-at-p "\\$"))
+                (progn
+                  (delete-char 1)
+                  (delete-char -1)
+                  (insert "\\(  \\)")
+                  (backward-char 3))
+              (insert "$$") (backward-char 1))
+            (bz/insert)))
 
-  "M-\\" ((insert "$$") (backward-char 1) (bz/insert))
-  ;; "M-|"  ((insert "\\[  \\]") (backward-char 3) (bz/insert))
-  )
+;; Fix the weird bug where the org-block face leaks outside of the fragment for single dollar sign fragments
+(bz/advise :around org-src-font-lock-fontify-block bz/org-src-font-lock-fontify-block (func lang start end)
+  ;; Don't remove all text properties
+  (advice-add #'remove-text-properties :override #'ignore)
+  (unwind-protect (funcall func lang start end)
+    (advice-remove #'remove-text-properties #'ignore))
 
+  (let ((is-bol nil)
+        (cb (lambda (face)
+              (if (listp face)
+                  (remove 'org-block face)
+                (and (not (eq face 'org-block)) face)))))
+
+    (when (and (equal lang "latex")
+               (save-excursion
+                 (goto-char start)
+                 (setq is-bol (bolp))
+                 (or (setq is-bol (and (bolp) (looking-at-p "\\$[^$]")))
+                     (looking-at-p "[^$]\\$[^$]"))))
+      (unless is-bol (alter-text-property start (1+ start) 'face cb))
+      (alter-text-property (1- end) end 'face cb))))
 
 
 ;;; Snippets
@@ -62,13 +74,13 @@
   "!" bz/snippet-math-pattern)
 
 (setf (alist-get 'org-mode bz/snippet-mode-alist)
-      '(
-        ("b s" "\\{ <<>>_j \\}_{j=1}^{\\infty}")
+      '(("b s" "\\{ <<>>_j \\}_{j=1}^{\\infty}")
         ("!" bz/snippet-math-pattern)
 
         ("h t" "#+title: ")
         ("h i" "#+latex_header: \\setlength{\\parindent}{0pt}")
         ("h m" "#+latex_header: \\newcommand{\\Mod}[1]{\\ (\\mathrm{mod}\\ #1)}")
+        ("h n" "#+latex_header: \\newcommand\\norm[1]{\\left\\lVert#1\\right\\rVert}")
         ("h g" "#+latex_header: \\usepackage[margin=1in]{geometry}")
         ("h s" "#+latex_header: \\AddToHook{cmd/section/before}{\\newpage}")
         ("h p" "#+latex: \\newpage")
@@ -89,7 +101,7 @@
         ("J" "_{<<>>}")
         ("I" " \\in ")
         ("t" "\\text{<<>>}")
-        ("T" "\\text{ <<>> }")
+        ("T" "\\texttt{<<>>}")
         ("M" "\\Mod{<<>>}")
         ("S" "\\star")
         ("x" "\\cdot")
@@ -123,6 +135,19 @@
         ("a v" "\\updownarrow")
         ("a V" "\\Updownarrow")
 
+        ("O" "\\operatorname{<<>>}")
+        ("o o" "\\operatorname{<<>>}")
+        ("o i" "\\operatorname{im}")
+        ("o g" "\\operatorname{graph}")
+        ("o c" "\\operatorname{codim}")
+        ;; Stats
+        ("p p" "\\operatorname{Pr}\\left[ <<>> \\right]")
+        ("p e" "\\operatorname{E}\\left[ <<>> \\right]")
+        ("p v" "\\operatorname{Var}\\left[ <<>> \\right]")
+        ("p c" "{<<>> \\choose }")
+        ("p C" "\\operatorname{Cov}\\left[ <<>> \\right]")
+        ("p t" "\\hat{\\theta}")
+
         ("s c" "\\circ")
         ("s s" "\\left\\{ <<>> \\right\\}")
         ("s m" "\\setminus")
@@ -150,11 +175,14 @@
         ("g m" "\\mu") ("g M" "\\Mu")
         ("g n" "\\nu") ("g N" "\\Nu")
         ("g o" "\\omega") ("g O" "\\Omega")
+        ("g p" "\\varphi") ("g P" "\\Phi")
         ("g r" "\\rho") ("g R" "\\Rho")
         ("g s" "\\sigma") ("g S" "\\Sigma")
         ("g t" "\\theta") ("g T" "\\Theta")
         ("g u" "\\tau") ("g U" "\\Tau")
         ("g z" "\\zeta") ("g Z" "\\Zeta")
+        ("v p" "\\varphi")
+        ("v e" "\\varepsilon")
 
         ("m r" "\\sqrt{<<>>}")
         ("m R" "\\sqrt[<<>>]{}")
@@ -168,14 +196,11 @@
         ("m I" "\\int_{<<>>}^{\\infty}")
         ("m l" "\\lim_{<<>> \\rightarrow }")
         ("m L" "\\lim_{<<>> \\rightarrow \\infty}")
+        ("m g" "\\nabla")
+        ("m n" "\\norm{<<>>}")
+        ("m t" "\\transv")
 
-        ("p p" "\\text{Pr}\\left[ <<>> \\right]")
-        ("p e" "\\text{E}\\left[ <<>> \\right]")
-        ("p v" "\\text{Var}\\left[ <<>> \\right]")
-        ("p c" "{<<>> \\choose }")
-        ("p C" "\\text{Cov}\\left[ <<>> \\right]")
-        ("p t" "\\hat{\\theta}")
-
+        ;; Logic
         ("l ." "\\mapsto") ; Arrow with bar
         ("l e" "\\exists")
         ("l f" "\\forall")
@@ -183,16 +208,16 @@
         ("l a" "\\land")
         ("l o" "\\lor")
         ("l c" "\\circ") ; Compose
-        ("l i" "\\text{im}\\,")
         ("l k" "\\ker")
 
         ("r b" "#+begin_box\n<<>>\n#+end_box")
-        ("r d" "#+begin_definition <<>>\n\n#+end_definition")
-        ("r t" "#+begin_theorem\n<<>>\n#+end_theorem")
+        ("r d" "#+begin_definition <<>>\n#+end_definition")
+        ("r t" "#+begin_theorem <<>>\n#+end_theorem")
         ("r p" "#+begin_proof\n<<>>\n#+end_proof")
         ("r a" "\\begin{align*}\n<<>>\n\\end{align*}")
         ("r c" "\\begin{cases} <<>> \\end{cases}")
         ("r m" "\\begin{matrix} <<>> \\end{matrix}")
+        ("r <" "\\langle <<>> \\rangle")
 
         ("b x" "\\mathbf{x}")
         ("b z" "\\mathbb{Z}")
@@ -241,6 +266,7 @@
         ("f y" "\\mathcal{Y}")
         ("f z" "\\mathcal{Z}")))
 
+
 ;;; Prettify
 
 (defvar bz/org-latex-font-lock-keywords nil)
@@ -248,9 +274,9 @@
   `(progn
      (font-lock-remove-keywords 'org-mode bz/org-latex-font-lock-keywords)
      (setq bz/org-latex-font-lock-keywords
-           (--map `(,(concat (regexp-quote (car it))
-                             (if (caddr it) "\\>" ""))
-                    (0 (ignore (compose-region (match-beginning 0) (match-end 0) ,(cadr it)))))
+           (--map `(,(concat "\\(" (regexp-quote (car it)) "\\)"
+                             "\\(?:[^a-zA-Z0-9]\\|$\\)")
+                    (1 (ignore (compose-region (match-beginning 1) (match-end 1) ,(cadr it)))))
                   ,(list '\` replacements)))
      (font-lock-add-keywords 'org-mode bz/org-latex-font-lock-keywords)))
 
@@ -266,6 +292,8 @@
  ("\\right)" "⟭")
  ("\\left\\{" "⦃")
  ("\\right\\}" "⦄")
+ ("\\langle" "〈")
+ ("\\rangle" "〉")
 
  ("\\sqrt" "√")
  ("\\cdot" "∙")
@@ -305,7 +333,7 @@
  ("\\land" "∧")
  ("\\lor" "∨")
  ("\\circ" "∘") ; Compose
- ("\\in" "∈" t)
+ ("\\in" "∈")
  ("\\notin" "∉")
  ("\\subseteq" "⊆")
  ("\\not\\subseteq" "⊄")
@@ -317,15 +345,15 @@
  ("\\bigcup" "⋃")
  ("\\emptyset" "∅")
  ("\\setminus" "∖")
- ("\\triangle" "∆" t)
- ("\\trianglelefteq" "⊴" t)
+ ("\\triangle" "∆")
+ ("\\trianglelefteq" "⊴")
  ("\\exists" "∃")
  ("\\not\\exists" "∄")
  ("\\forall" "∀")
  ("\\infty" "∞")
- ("\\ne" "≠" t)
- ("\\ge" "≥" t)
- ("\\le" "≤" t)
+ ("\\ne" "≠")
+ ("\\ge" "≥")
+ ("\\le" "≤")
  ("\\square" "□")
 
  ("\\mathbb{C}" "ℂ")
@@ -337,9 +365,12 @@
  ("\\mathbb{Z}" "ℤ")
  ("\\mathbb{F}" "𝔽")
  ("\\partial" "∂")
+ ("\\nabla" "∇")
+ ("\\transv" "⫛")
 
  ("\\ell" "ℓ")
  ("\\overline" "﹉")
+ ("\\operatorname" "⏣")
 
  ("\\cong" "≅")
  ("\\approx" "≈")
@@ -393,3 +424,8 @@
  ("\\mathcal{U}" "𝓤") ("\\mathcal{V}" "𝓥")
  ("\\mathcal{W}" "𝓦") ("\\mathcal{X}" "𝓧")
  ("\\mathcal{Y}" "𝓨") ("\\mathcal{Z}" "𝓩"))
+
+
+;;; Provide
+
+(provide 'bz-org-latex)

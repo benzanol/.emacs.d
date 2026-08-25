@@ -6,13 +6,25 @@
 (bz/require activities)
 (bz/require lsp)
 
-(defvar bz/lsp-directories nil)
+(setq bz/lsp-directories nil)
 
-(bz/hook (rust-mode-hook typescript-mode-hook js-jsx-mode-hook svelte-mode-hook dart-mode-hook) bz/prj-enable-lsp
+(bz/hook (rust-mode-hook typescript-mode-hook js-jsx-mode-hook svelte-mode-hook dart-mode-hook kotlin-mode-hook) bz/prj-enable-lsp
   (when buffer-file-name
     (let ((buf-file (expand-file-name buffer-file-name)))
       (when (--any (s-starts-with-p (expand-file-name it) buf-file) bz/lsp-directories)
         (lsp)))))
+
+(defun bz/lsp-directory-auto ()
+  (interactive)
+  (let ((dir (expand-file-name
+              (or (lsp-workspace-root)
+                  dired-directory
+                  (error "Must be run in a dired or lsp buffer")))))
+    (if (member dir bz/lsp-directories)
+        (progn (setq bz/lsp-directories (delete dir bz/lsp-directories))
+               (message "Disabled LSP auto mode in `%s'" dir))
+      (push dir bz/lsp-directories)
+      (message "Enabled LSP auto mode in `%s'" dir))))
 
 ;; Tree sitter errors when opening jsx files
 (require 'js)
@@ -38,7 +50,7 @@
 
         (web :dir "Node" :template "web" :run "python3 -m http.server 8080")
         (javascript :dir "Node" :extension "js" :lsp nil :run "node %s.js")
-        (typescript :dir "Node" :lsp t :run "ts-node ./src/main.ts"
+        (typescript :dir "Node" :lsp nil :run "ts-node ./src/main.ts"
                     :template "typescript" :eventually "src/main.ts")
         (reactnative :dir "ReactNative" :lsp t :run "echo 'npx react-native start' | db enter debian1"
                      :init "echo '%s' | npx react-native init --template react-native-template-typescript && mv */{*,.*} . ; rm -rf '%1$s'"
@@ -160,10 +172,10 @@
     ;; Put the plist into the activity
     (setcdr (assoc 'plist bz/current-activity) act-plist)))
 
-(bz/keys *
-  "C-x C-o" bz/prj-open
-  "<C-return>" bz/prj-run
-  "<C-M-return>" (@ bz/prj-alt-run (bz/prj-run t)))
+;; (bz/keys *
+;;   "C-x C-o" bz/prj-open
+;;   "<C-return>" bz/prj-run
+;;   "<C-M-return>" (@ bz/prj-alt-run (bz/prj-run t)))
 
 (defun bz/prj-run (&optional alt)
   (interactive)
@@ -201,3 +213,8 @@
     (select-window (get-buffer-window (format ":%s:browser:" (downcase (car bz/current-activity)))))
     ($ "sleep 0.15; xdotool key Control+r")
     (run-with-timer 0.4 nil #'select-window win)))
+
+
+;;; Provide
+
+(provide 'bz-projects)

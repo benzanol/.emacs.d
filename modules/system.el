@@ -1,15 +1,28 @@
+;; -*- lexical-binding: t; -*-
+
+(require 'bz-base)
+
+(require 'desktop-environment)
+
+
 ;;; Keyboard settings
 
 ($ "xset r rate 250 20")
 
-;; Only setup keyboard on first launch
-(unless (boundp 'bz/is-keyboard-setup)
-  (setq bz/is-keyboard-setup t)
 
-  ;; Swap windows and alt
-  ($ "setxkbmap -option altwin:swap_alt_win")
-  ;; Set caps lock to control
-  (run-with-timer 2 nil (lambda () ($ "xmodmap ~/.Xmodmap"))))
+;; All of this has been replaced by keyd in nixos config
+
+;; Only setup keyboard on first launch
+(defvar bz/is-keyboard-setup nil)
+;; (unless bz/is-keyboard-setup
+;;   (setq bz/is-keyboard-setup t)
+
+;;   ($ "while true; do\nxdotool mousemove_relative -- 1 0\nsleep 290\ndone")
+
+;;   ;; Swap windows and alt
+;;   ($ "setxkbmap -option altwin:swap_alt_win")
+;;   ;; Set caps lock to control
+;;   (run-with-timer 2 nil (lambda () ($ "xmodmap ~/.Xmodmap"))))
 
 ;; ~/.Xmodmap
 ;; remove Lock = Caps_Lock
@@ -17,23 +30,35 @@
 ;; add Control = Control_L
 ;; keycode 64 =
 
+;; Interpret space when held as alt
+
+;; ($$ "xmodmap -e 'keycode 65 = Alt_L'")
+;; ($$ "xcape -e 'Alt_L=space'")
+
 
 ;;; Don't turn off screen
 
 ;; Doesn't work
 ($ "xset -dpms")
 
-($ "while true; do\nxdotool mousemove_relative -- 1 0\nsleep 290\ndone")
 
 ;;; Transparency
 
+(defvar bz/opacity 1)
 (defun bz/set-opacity (opacity)
+  (setq bz/opacity (setq opacity (float opacity)))
   (set-frame-parameter (selected-frame) 'alpha (cons opacity opacity))
   (add-to-list 'default-frame-alist (cons 'alpha (cons opacity opacity)))
   (set-frame-parameter (selected-frame) 'fullscreen 'maximized)
   (add-to-list 'default-frame-alist '(fullscreen . maximized)))
 
-(bz/set-opacity 88)
+(defun bz/toggle-transparent ()
+  (interactive)
+  (if (= bz/opacity 1)
+      (bz/set-opacity 0.85)
+    (bz/set-opacity 1)))
+
+(bz/set-opacity bz/opacity)
 ($ "compton")
 
 
@@ -50,8 +75,8 @@
            (desktop-environment-brightness-get)))
 
 
-(setq bz/gamma 1)
-(setq bz/gamma-increment 0.2)
+(defvar bz/gamma 1)
+(defvar bz/gamma-increment 0.1)
 
 (defun bz/change-gamma (amt)
   (setq bz/gamma (max 1 (* 0.1 (round (+ bz/gamma amt) 0.1))))
@@ -87,23 +112,11 @@
 (bz/face bz/message-box :fg "#4A708B" :s italic) ; SkyBlue4
 
 
-;;; Displays
-
-(defun bz/exwm-setup-displays ()
-  (interactive)
-  ($$ "xrandr --output eDP-1 --primary --mode 1920x1080 --pos 0x0")
-  ;; Sometimes the monitor is DP-1, sometimes DP-2
-  ($$ "xrandr --output DP-1 --mode 1920x1080 --pos 0x0")
-  ($$ "xrandr --output DP-2 --mode 1920x1080 --pos 0x0")
-
-  ;; (set-frame-size (selected-frame) 800 600 t)
-  (set-frame-size (selected-frame) 1905 1080 t)
-
-  ;; By setting the y position to -1, x windows go right to the top of the screen
-  (set-frame-position (selected-frame) 0 -1))
-
 ;;; Xhost
+
 ($ "xhost +")
+
+
 ;;; CPU
 
 ;; Make cpupower available to all users:
@@ -111,8 +124,8 @@
 ;; Add line to extra rules:
 ;; %wheel ALL=(ALL) NOPASSWD: /nix/store/....../bin/cpupower *
 
-(setq bz/cpu-level 1)
-(setq bz/cpu-level-names '("Low" "Save" "Mid" "High"))
+(defvar bz/cpu-level 1)
+(defvar bz/cpu-level-names '("Low" "Save" "Mid" "High"))
 
 (defun bz/cpu-up (n)
   (interactive (list 1))
@@ -126,3 +139,8 @@
 (defun bz/cpu-down (n)
   (interactive (list 1))
   (bz/cpu-up (- n)))
+
+
+;;; Provide
+
+(provide 'bz-system)

@@ -40,3 +40,22 @@ It is up to the modification hook itself to be able to modify the lens. It shoul
 
 * Raw Lens
 Insert, then modification hook is called modifying the lens right after
+
+# This is an example diagram
+#+begin_src plantuml :file resources/flowchart.png :exports results
+@startuml
+start
+:Initial step;
+if (Decision?) then (yes)
+  :Process 1;
+else (no)
+  :Process 2;
+endif
+:Final step;
+stop
+@enduml
+#+end_src
+
+#+RESULTS:
+[[file:resources/flowchart.png]]
+

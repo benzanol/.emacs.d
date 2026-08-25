@@ -1,10 +1,13 @@
-(bz/package undo-tree)
+;; -*- lexical-binding: t; -*-
+(load-file "~/.emacs.d/my-packages/undo-tree-0.7.5.el")
 
 ;; Enable in all buffers
-(bz/hook buffer-list-update-hook bz/undo-tree-mode
-  (with-current-buffer (car (buffer-list))
-    (unless (derived-mode-p 'vterm-mode 'dired-mode)
-      (undo-tree-mode 1))))
+(bz/hook buffer-list-update-hook bz/undo-tree-mode :remove
+         (with-current-buffer (car (buffer-list))
+           (unless (derived-mode-p 'vterm-mode 'dired-mode 'magit-mode)
+             (undo-tree-mode 1))))
+
+(dolist (buf (buffer-list)) (undo-tree-mode 0))
 
 (bz/hook find-file-hook undo-tree-mode)
 
@@ -22,6 +25,7 @@
   "C-x C-u" bz/undo-tree-visualize
   [remap undo] undo-tree-undo
   [remap redo] undo-tree-redo
+  [remap undo-redo] undo-tree-redo
   "C-_" nil
   )
 
@@ -51,3 +55,6 @@
       (current-buffer))))
 
 
+;;; Provide
+
+(provide 'bz-undotree)
